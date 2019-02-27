@@ -1,5 +1,4 @@
-﻿  render.cpp
-c:\users\xavierortigosacortes\desktop\glframework\code\src\render.cpp(357): warning C4244: 'argument': conversion from 'double' to 'GLfloat', possible loss of data
-  GL_framework.vcxproj -> C:\Users\xavierortigosacortes\Desktop\glframework\x64\Debug\GL_framework.exe
+﻿  physics.cpp
+  GL_framework.vcxproj -> C:\Users\xavierortigosacortes\Desktop\Mecanica\glframework\x64\Debug\GL_framework.exe
   0 archivo(s) copiado(s)
   0 archivo(s) copiado(s)
