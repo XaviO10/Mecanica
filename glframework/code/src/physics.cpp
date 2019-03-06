@@ -22,7 +22,7 @@ namespace Sphere {
 	extern void drawSphere();
 	glm::vec3 Sphereposition(1.f, 1.f, 1.f);
 	float massSphere = 50.f;
-	float radius = 1.f;
+	float rad=1.f;
 	
 }
 namespace Capsule {
@@ -55,8 +55,6 @@ struct ParticleSystem
 	std::vector<glm::vec3> positions;
 	std::vector<glm::vec3> velocity;
 	std::vector<float> mass;
-	
-	
 };
 
 struct ForceActuator {
@@ -75,7 +73,6 @@ struct SphereForce :ForceActuator
 		return Sphforce;
 	}
 };
-
 struct GravityForce :ForceActuator 
 {
 	glm::vec3 gravity = { 0,9.81,0 };
@@ -91,20 +88,22 @@ struct Collider {
 	
 	void computeCollision(const glm::vec3& old_pos,const glm::vec3& old_vel, glm::vec3& new_pos,glm::vec3& new_vel) {
 		//...
-		if (checkCollision) 
-		{
 		
-		}
 	}
 };
 
-struct PlaneCol :Collider 
+struct PlaneCollider :Collider 
 {
-	glm::vec3 plane_normal;
+	glm::vec3 plane_normal = {0,0,1};
 	float plane_d;
 	bool checkCollision(const glm::vec3& prev_pos, const glm::vec3& next_pos) 
 	{
 		//Distancia con los 6 planos
+		if (glm::dot(prev_pos, plane_normal)<0)
+		{
+			
+		}
+		return false;
 	}
 	
 	void getPlane(glm::vec3& normal, float& d)
@@ -114,7 +113,7 @@ struct PlaneCol :Collider
 	}	
 };
 
-struct SphereCol : Collider {
+struct SphereCollider : Collider {
 	bool checkCollision(const glm::vec3& prev_pos, const glm::vec3& next_pos) {
 		float checkCollisionX_prev = 0;
 		float checkCollisionY_prev = 0;
@@ -133,12 +132,13 @@ struct SphereCol : Collider {
 		checkCollisionY_next = prev_pos.y - Sphere::Sphereposition.y;
 		checkCollision_next = sqrt(pow(checkCollisionX_prev, 2) + pow(checkCollisionY_prev, 2));
 		//la particula solo colisiona si el prev_pos es más grande
-		if ((Sphere::radius < checkCollision_prev) && (Sphere::radius > checkCollision_next)) {
+		if ((Sphere::rad < checkCollision_prev) && (Sphere::rad > checkCollision_next)) {
 		}
 		//implementar las normales
 		else {
 			return false;
 		}
+		return false;
 	}
 	void getPlane(glm::vec3& normal, float& d) {
 
@@ -163,7 +163,7 @@ bool renderCube = false;
 
 float* data;
 ParticleSystem particles;
-std::vector<Collider> colliders;
+std::vector<Collider*> colliders;
 std::vector<ForceActuator*> force_acts;
 
 //***EULER***//
@@ -232,6 +232,12 @@ void PhysicsInit() {
 	force_acts.push_back(SphForce);
 	force_acts.push_back(GravForce);
 
+	Collider *planeCollider = new PlaneCollider;
+	Collider *sphereCollider = new SphereCollider;
+
+	colliders.push_back(planeCollider);
+	colliders.push_back(sphereCollider);
+
 	for (int i = 0; i < 5000; i++) 
 	{			
 		//*****************INIT PARTICLES*****************//
@@ -273,7 +279,10 @@ void PhysicsUpdate(float dt) {
 	// Do your update code here...
 	euler(dt, particles, force_acts);
 	Particles::updateParticles(0, 6100, data);
-	
+	for (int i = 0; i < colliders.size(); i++)
+	{
+		
+	}
 	// ...........................
 }
 
