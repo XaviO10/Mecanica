@@ -20,7 +20,7 @@ namespace Sphere {
 
 	extern void updateSphere(glm::vec3 pos, float radius = 1.f);
 	extern void drawSphere();
-	glm::vec3 Sphereposition(1.f, 1.f, 1.f);
+	glm::vec3 Sphereposition(0.f, 0.f, 5.f);
 	float massSphere = 50.f;
 	float rad=1.f;
 	
@@ -94,22 +94,75 @@ struct Collider {
 
 struct PlaneCollider :Collider 
 {
-	glm::vec3 plane_normal = {0,0,1};
+	
 	float plane_d;
-	bool checkCollision(const glm::vec3& prev_pos, const glm::vec3& next_pos) 
+	glm::vec3 plane_normal;
+
+	bool checkCollision(const glm::vec3& prev_pos, const glm::vec3& next_pos)
 	{
-		//Distancia con los 6 planos
-		if (glm::dot(prev_pos, plane_normal)<0)
+		//Sale por X
+		if ((prev_pos.x > -5) && (next_pos.x < -5))
 		{
-			
+			//Plano de la izquierda con normal (1,0,0)
+			plane_d = -5;
+			plane_normal = { 1,0,0 };
+			getPlane(plane_normal, plane_d);
+			return true;
 		}
+
+		if ((prev_pos.x < 5) && (next_pos.x > 5))
+		{
+			plane_d = 5;
+			//Plano de arriba con normal (-1,0,0)
+			plane_normal = { -1,0,0 };
+			getPlane(plane_normal, plane_d);
+			return true;
+		}	
+		
+
+		//Sale por Y
+		if ((prev_pos.y > 0) && (next_pos.y < 0)) 
+		{
+			//Plano de la izquierda normal en direccion al eje Y
+			plane_d = 0;
+			plane_normal = { 0,1,0 };
+			getPlane(plane_normal, plane_d);
+			return true;
+		}
+		if ((prev_pos.y > 0) && (next_pos.y < 0))
+		{
+			plane_d = 10;
+			plane_normal = { 0,-1,0 };
+			getPlane(plane_normal, plane_d);
+			return true;
+		}
+		
+		//Sale por Z
+		if ((prev_pos.z > -5) && (next_pos.z < -5))
+		{
+			//Plano de la izquierda con normal (1,0,0)
+			plane_d = -5;
+			plane_normal = { 0,0,1 };
+			getPlane(plane_normal, plane_d);
+			return true;
+		}
+
+		if ((prev_pos.z < 5) && (next_pos.z > 5))
+		{
+			plane_d = 5;
+			//Plano de arriba con normal (-1,0,0)
+			plane_normal = { 0,0,-1 };
+			getPlane(plane_normal, plane_d);
+			return true;
+		}
+
 		return false;
 	}
 	
 	void getPlane(glm::vec3& normal, float& d)
 	{
-		normal = plane_normal;
-		d = plane_d;
+		normal=plane_normal;
+		d=plane_d;
 	}	
 };
 
