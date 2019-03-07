@@ -92,8 +92,10 @@ struct Collider {
 	void computeCollision(const glm::vec3& old_pos,const glm::vec3& old_vel, glm::vec3& new_pos,glm::vec3& new_vel) 
 	{		
 		getPlane(normal, d);
+
 		new_pos = new_pos - (1+elasticity) * ((glm::dot(normal, new_pos) + d)*normal);
 		new_vel = new_pos - (1+elasticity) * (glm::dot(normal, new_vel)*normal);
+		
 	}
 };
 
@@ -113,7 +115,7 @@ struct PlaneCollider: Collider {
 		float distancePrev = ((glm::dot(prev_pos, p_normal)) + p_d)/glm::length(p_normal);
 		float distanceNext = ((glm::dot(next_pos, p_normal)) + p_d)/glm::length(p_normal);
 
-		if (distancePrev > 0 && distanceNext <= 0) return true;
+		if (distancePrev > abs(p_d) && distanceNext <= abs(p_d)) return true;
 		else return false;
 	}
 
@@ -219,7 +221,7 @@ void renderPrims() {
 
 	if (renderParticles) {
 		int startDrawingFromParticle = 0;
-		int numParticlesToDraw =50;
+		int numParticlesToDraw =500;
 		Particles::drawParticles(startDrawingFromParticle, numParticlesToDraw);
 	}
 
@@ -253,15 +255,18 @@ void GUI() {
 	}
 }
 
-float randomFloat(float min, float max) 
+float randomFloat(float a, float b) 
 {
-	return  (max - min) * ((((float)rand()) / (float)RAND_MAX)) + min;
+	float random = ((float)rand()) / (float)RAND_MAX;
+	float diff = b - a;
+	float r = random * diff;
+	return a + r;
 }
 
 void PhysicsInit() {
 
 	// Do your initialization code here...
-	srand(time(NULL));	
+	
 	Sphere::updateSphere(Sphere::Sphereposition);
 	
 	SphereForce *SphForce = new SphereForce;
@@ -304,31 +309,26 @@ void PhysicsInit() {
 	// ...................................
 }
 
-glm::vec3 computeForces(float mass, const glm::vec3& position, const std::vector<ForceActuator*>& force_acts)
-{
-	glm::vec3 forces;
-	
-	for (int i = 0; i < force_acts.size(); i++)
-	{
-		forces += force_acts[i]->computeForce(mass, position);
-	}
-	return forces;
-}
-
 void euler(float dt, ParticleSystem &auxParticle, const std::vector<Collider*>& colliders, const std::vector<ForceActuator*>& force_acts)
 {
 	for (int i = 0; i < 5000; i++)
 	{
+		glm::vec3 force{ 0,0,0 };
 		glm::vec3 oldpos, oldvel;		
 		oldpos = auxParticle.positions[i];
 		oldvel = auxParticle.velocity[i];
 
+		for (int j = 0; j < force_acts.size(); j++)
+		{
+			force += force_acts[j]->computeForce(auxParticle.mass[i], auxParticle.positions[i]);
+		}
+
 		auxParticle.positions[i] = auxParticle.positions[i]+dt*auxParticle.velocity[i];
-		auxParticle.velocity[i] = auxParticle.velocity[i] + (dt* (computeForces(auxParticle.mass[i], auxParticle.positions[i], force_acts))/auxParticle.mass[i]);
+		auxParticle.velocity[i] = auxParticle.velocity[i] + (dt* force/auxParticle.mass[i]);
 
 		for (int j = 0; j < colliders.size(); j++) 
 		{
-			if ((colliders[j]->checkCollision(oldpos, auxParticle.positions[i])==true))
+			if (colliders[j]->checkCollision(oldpos, auxParticle.positions[i]))
 			{
 				colliders[j]->computeCollision(oldpos, oldvel, auxParticle.positions[i], auxParticle.velocity[i]);
 			}
@@ -351,7 +351,17 @@ void PhysicsUpdate(float dt) {
 
 void PhysicsCleanup() {
 	// Do your cleanup code here...
+	delete[] data;
+	for (std::vector<Collider*>::iterator it = colliders.begin(); it != colliders.end(); ++it)
+	{
+		delete (*it);
+	}
+	colliders.clear();
 
-
+	for (std::vector<ForceActuator*>::iterator it = force_acts.begin(); it != force_acts.end(); ++it)
+	{
+		delete (*it);
+	}
+	force_acts.clear();
 	// ............................
 }
