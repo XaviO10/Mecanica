@@ -112,10 +112,10 @@ struct PlaneCollider: Collider {
 
 	bool checkCollision(const glm::vec3& prev_pos, const glm::vec3& next_pos)
 	{
-		float distancePrev = ((glm::dot(prev_pos, p_normal)) + p_d)/glm::length(p_normal);
-		float distanceNext = ((glm::dot(next_pos, p_normal)) + p_d)/glm::length(p_normal);
+		float distancePrev = ((glm::dot(prev_pos, p_normal)) + p_d)/ (glm::length(p_normal));
+		float distanceNext = ((glm::dot(next_pos, p_normal)) + p_d)/ (glm::length(p_normal));
 
-		if (distancePrev > abs(p_d) && distanceNext <= abs(p_d)) return true;
+		if (distancePrev>0 && distanceNext<=0) return true;
 		else return false;
 	}
 
