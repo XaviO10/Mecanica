@@ -6,9 +6,11 @@
 #include <stdlib.h>
 #include <time.h>
 #include <iostream>
+#include <glm/gtx/intersect.hpp>
 
-
-
+float WFEdge1[3] = { 1,2,1 };
+glm::vec3 gravity = { 0,9.81,0 };
+float FrictionCoefficient [1]= { 0 };
 namespace Box {
 	void drawCube();
 }
@@ -19,8 +21,8 @@ namespace Sphere {
 
 	extern void updateSphere(glm::vec3 pos, float radius = 1.f);
 	extern void drawSphere();
-	glm::vec3 Sphereposition(0.f, 0.f, 0.f);
-	float massSphere = 50.f;
+	glm::vec3 Sphereposition(1.f, 2.f, 0.f);
+	float massSphere = 100.f;
 	float rad=1.f;
 	
 }
@@ -79,6 +81,8 @@ struct GravityForce :ForceActuator
 	{
 		return gravity*mass;
 	}
+
+	
 };
 
 struct Collider {
@@ -126,11 +130,9 @@ struct PlaneCollider: Collider {
 	}	
 };
 
-/*struct SphereCollider : Collider {
-	
-	glm::vec3 sphere_normal = { 0,0,1 };
+struct SphereCollider : Collider {
+	glm::vec3 sphere_normal = { 0,0,0 };
 	float sphere_d;
-	
 	bool checkCollision(const glm::vec3& prev_pos, const glm::vec3& next_pos) {
 		float checkCollisionX_prev = 0;
 		float checkCollisionY_prev = 0;
@@ -140,13 +142,14 @@ struct PlaneCollider: Collider {
 		float checkCollisionY_next = 0;
 		float checkCollisionZ_next = 0;
 		float checkCollision_next = 0;
+		glm::vec3 intersectionPoint1 = { 0,0,0 };
+		glm::vec3 intersectionPoint2 = { 0,0,0 };
 		glm::vec3 vectorpFinal = { 0,0,0 };
 		glm::vec3 equacionRecta = { 0,0,0 };
-		float a, b, c, d, x1, x2;
-		float x;
-		float y;
-		float z;
-		
+		float a, b;
+
+
+
 		//comprobamos si la prev_pos ha colisionado o no
 		checkCollisionX_prev = prev_pos.x - Sphere::Sphereposition.x;
 		checkCollisionY_prev = prev_pos.y - Sphere::Sphereposition.y;
@@ -160,17 +163,20 @@ struct PlaneCollider: Collider {
 		//la particula solo colisiona si el prev_pos es más grande que la esfera del radio y si el next_pos es más pequeño que el radio
 		if ((Sphere::rad < checkCollision_prev) && (Sphere::rad > checkCollision_next))
 		{
-			//implementar las normales
-			vectorpFinal = { prev_pos.x - next_pos.x, prev_pos.y - next_pos.y, prev_pos.z - next_pos.z };
-			equacionRecta = { prev_pos.x + vectorpFinal.x,prev_pos.y*t + vectorpFinal.y*t,prev_pos.z + vectorpFinal.z*t };//la nueva t me dará el punto de colision con la esfera
-			t = sqrt(b*b - (4 * a*b));
-		}
-		if (t > 0)
-		{
-			x1 = ((b*-1) + (d)) / (2 * a);
-			x2 = ((b*-1) - (d)) / (2 * a);
-		}
+			glm::intersectLineSphere(prev_pos, next_pos, Sphere::Sphereposition, Sphere::rad, intersectionPoint1, sphere_normal, intersectionPoint2);
+			a = sqrt(pow(prev_pos.x - intersectionPoint1.x, 2) + pow(prev_pos.y - intersectionPoint1.y, 2) + pow(prev_pos.z - intersectionPoint1.z, 2));
+			b = sqrt(pow(prev_pos.x - intersectionPoint2.x, 2) + pow(prev_pos.y - intersectionPoint2.y, 2) + pow(prev_pos.z - intersectionPoint2.z, 2));
 
+			if (a < b) {
+				sphere_d = -((intersectionPoint1.x*sphere_normal.x) + (intersectionPoint1.y*sphere_normal.y) + (intersectionPoint1.z*sphere_normal.z));
+			}
+			else if (a > b) {
+				sphere_d = -((intersectionPoint2.x*sphere_normal.x) + (intersectionPoint2.y*sphere_normal.y) + (intersectionPoint2.z*sphere_normal.z));
+			}
+			//hace el rebote una vez y ya esta juraria, creo qu es mejor usaar if else que while
+			//implementar las normales
+
+		}
 		else
 		{
 			return false;
@@ -182,7 +188,7 @@ struct PlaneCollider: Collider {
 		normal = sphere_normal;
 		d = sphere_d;
 	}
-};*/
+};
 			
 struct CapsuleCol : Collider {
 	bool checkCollision(const glm::vec3& prev_pos, const glm::vec3& next_pos) {
@@ -193,7 +199,7 @@ struct CapsuleCol : Collider {
 	}
 };
 // Boolean variables allow to show/hide the primitives
-bool renderSphere = false;
+bool renderSphere = true;
 bool renderCapsule = false;
 bool renderParticles = true;
 bool renderMesh = false;
@@ -241,6 +247,15 @@ void GUI() {
 	// Do your GUI code here....
 	{	
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);//FrameRate
+		ImGui::Button("Play/Pause", ImVec2(650, 20));
+		ImGui::Button("Boton", ImVec2(650, 20));
+		ImGui::DragFloat3("GravityControl", WFEdge1, gravity.x, gravity.y, gravity.z, 0);
+		ImGui::DragFloat("Elasticity", &elasticity, 0);
+		ImGui::DragFloat("Friction", FrictionCoefficient, 0);
+		ImGui::DragFloat("SphereMass", &Sphere::massSphere, 0);
+		/*ImGui::DragFloat3("SpherePosition", &Sphere::Sphereposition, &Sphere::Sphereposition.x, &Sphere::Sphereposition.y, &Sphere::Sphereposition.z, 0);*/
+		ImGui::DragFloat("SphereRadius", &Sphere::rad, 0);
+		
 		
 	}
 	// .........................
@@ -288,10 +303,10 @@ void PhysicsInit() {
 
 	colliders.push_back(planeColliderDown);
 	//colliders.push_back(planeColliderUp);
-	colliders.push_back(planeColliderLeft);
+	/*colliders.push_back(planeColliderLeft);
 	colliders.push_back(planeColliderRight);
 	colliders.push_back(planeColliderFront);
-	colliders.push_back(planeColliderBack);
+	colliders.push_back(planeColliderBack);*/
 
 	//colliders.push_back(sphereCollider);
 
