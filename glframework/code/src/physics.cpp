@@ -5,6 +5,7 @@
 #include <vector>
 #include <stdlib.h>
 #include <time.h>
+#include <windows.h>
 #include <iostream>
 #include <glm/gtx/intersect.hpp>
 
@@ -19,7 +20,7 @@ namespace Sphere {
 	extern void updateSphere(glm::vec3 pos, float radius = 1.f);
 	extern void drawSphere();
 	glm::vec3 Sphereposition(1.f, 2.f, 0.f);
-	float massSphere = 100.f;
+	float massSphere = 1.f;
 	float rad = 1.f;
 }
 namespace Capsule {
@@ -231,16 +232,22 @@ void renderPrims() {
 
 void GUI() {
 	bool show = true;
+	bool play=false;
+	
 	ImGui::Begin("Physics Parameters", &show, 0);
 
 	// Do your GUI code here....
 	{
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);//FrameRate
-		if (ImGui::Button("Play/Pause", ImVec2(650, 20)))
-		{
 
+		if (ImGui::Checkbox("Play/Pause", &play))
+		{
+			
 		}
-		ImGui::Button("Boton", ImVec2(650, 20));
+	
+		
+		
+		ImGui::Button("ResetSimulation", ImVec2(650, 20));
 		ImGui::DragFloat3("GravityControl", WFEdge1, gravity.x, gravity.y, gravity.z, 0);
 		ImGui::DragFloat("Elasticity", &elasticity, elasticity);
 		ImGui::DragFloat("Friction", FrictionCoefficient, *FrictionCoefficient);
