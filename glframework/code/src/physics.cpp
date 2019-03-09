@@ -8,23 +8,19 @@
 #include <iostream>
 #include <glm/gtx/intersect.hpp>
 
-float WFEdge1[3] = { 1,2,1 };
-glm::vec3 gravity = { 0,9.81,0 };
-float FrictionCoefficient [1]= { 0 };
 namespace Box {
 	void drawCube();
 }
 namespace Axis {
 	void drawAxis();
 }
-namespace Sphere {
 
+namespace Sphere {
 	extern void updateSphere(glm::vec3 pos, float radius = 1.f);
 	extern void drawSphere();
 	glm::vec3 Sphereposition(1.f, 2.f, 0.f);
 	float massSphere = 100.f;
-	float rad=1.f;
-	
+	float rad = 1.f;
 }
 namespace Capsule {
 	extern void updateCapsule(glm::vec3 posA, glm::vec3 posB, float radius = 1.f);
@@ -42,7 +38,7 @@ namespace Mesh {
 	extern void drawMesh();
 }
 namespace Fiber {
-extern const int numVerts;
+	extern const int numVerts;
 	extern void updateFiber(float* array_data);
 	extern void drawFiber();
 }
@@ -51,22 +47,38 @@ namespace Cube {
 	extern void drawCube();
 }
 
-struct ParticleSystem 
+glm::vec3 gravity = { 0,-9.81,0 };
+float WFEdge1[3] = { gravity.x,gravity.y,gravity.z };
+float elasticity = 0.5;
+float constant = -10;
+float FrictionCoefficient[1] = { 0 };
+bool pause;
+
+
+struct ParticleSystem
 {
-	std::vector<glm::vec3> positions;
+	std::vector<glm::vec3> position;
 	std::vector<glm::vec3> velocity;
 	std::vector<float> mass;
 };
 
-struct ForceActuator {
+struct ForceActuator
+{
 	virtual glm::vec3 computeForce(float mass, const glm::vec3& position) = 0;
 };
 
-float constant = 0;
-float elasticity = 0;
-struct SphereForce :ForceActuator 
+struct GravityForce :ForceActuator
 {
-	glm::vec3 computeForce(float mass, const glm::vec3& position) 
+
+	glm::vec3 computeForce(float mass, const glm::vec3& position)
+	{
+		return gravity * mass;
+	}
+};
+
+struct SphereForce :ForceActuator
+{
+	glm::vec3 computeForce(float mass, const glm::vec3& position)
 	{
 		glm::vec3 Sphforce = constant * Sphere::massSphere*mass*(position - Sphere::Sphereposition);
 		Sphforce = Sphforce / sqrt(((position.x - Sphere::Sphereposition.x) + (position.y - Sphere::Sphereposition.y) + (position.z - Sphere::Sphereposition.z)));
@@ -74,41 +86,28 @@ struct SphereForce :ForceActuator
 		return Sphforce;
 	}
 };
-struct GravityForce :ForceActuator 
-{
-	glm::vec3 gravity = { 0,-9.81,0 };
-	glm::vec3 computeForce(float mass, const glm::vec3& position) 
-	{
-		return gravity*mass;
-	}
-
-	
-};
 
 struct Collider {
 
 	float d;
-	glm::vec3 normal;	
+	glm::vec3 normal;
 
-	virtual bool checkCollision(const glm::vec3& prev_pos,const glm::vec3& next_pos) = 0;
+	virtual bool checkCollision(const glm::vec3& prev_pos, const glm::vec3& next_pos) = 0;
 	virtual void getPlane(glm::vec3& normal, float& d) = 0;
-	
-	void computeCollision(const glm::vec3& old_pos,const glm::vec3& old_vel, glm::vec3& new_pos,glm::vec3& new_vel) 
-	{		
-		getPlane(normal, d);
 
-		new_pos = new_pos - (1+elasticity) * ((glm::dot(normal, new_pos) + d)*normal);
-		new_vel = new_pos - (1+elasticity) * (glm::dot(normal, new_vel)*normal);
-		
+	void computeCollision(const glm::vec3& old_pos, const glm::vec3& old_vel, glm::vec3& new_pos, glm::vec3& new_vel)
+	{
+		getPlane(normal, d);
+		new_pos = new_pos - (1 + elasticity) * ((glm::dot(normal, new_pos) + d)*normal);
+		new_vel = new_pos - (1 + elasticity) * (glm::dot(normal, new_vel)*normal);
 	}
 };
+struct PlaneCollider : Collider {
 
-struct PlaneCollider: Collider {
-	
 	float p_d;
 	glm::vec3 p_normal;
 
-	PlaneCollider(glm::vec3 _nrmal, float _d) 
+	PlaneCollider(glm::vec3 _nrmal, float _d)
 	{
 		p_normal = _nrmal;
 		p_d = _d;
@@ -116,18 +115,18 @@ struct PlaneCollider: Collider {
 
 	bool checkCollision(const glm::vec3& prev_pos, const glm::vec3& next_pos)
 	{
-		float distancePrev = ((glm::dot(prev_pos, p_normal)) + p_d)/ (glm::length(p_normal));
-		float distanceNext = ((glm::dot(next_pos, p_normal)) + p_d)/ (glm::length(p_normal));
+		float distancePrev = ((glm::dot(prev_pos, p_normal)) + p_d) / glm::length(p_normal);
+		float distanceNext = ((glm::dot(next_pos, p_normal)) + p_d) / glm::length(p_normal);
 
-		if (distancePrev>0 && distanceNext<=0) return true;
+		if (distancePrev > 0 && distanceNext <= 0) return true;
 		else return false;
 	}
 
 	void getPlane(glm::vec3& normal, float& d)
 	{
 		normal = p_normal;
-		d = p_d;		
-	}	
+		d = p_d;
+	}
 };
 
 struct SphereCollider : Collider {
@@ -189,15 +188,13 @@ struct SphereCollider : Collider {
 		d = sphere_d;
 	}
 };
-			
-struct CapsuleCol : Collider {
-	bool checkCollision(const glm::vec3& prev_pos, const glm::vec3& next_pos) {
 
-	}
-	void getPlane(glm::vec3& normal, float& d) {
+ParticleSystem particle;
+float *data;
+std::vector<ForceActuator*> force_acts;
+std::vector<Collider*> colliders;
 
-	}
-};
+
 // Boolean variables allow to show/hide the primitives
 bool renderSphere = true;
 bool renderCapsule = false;
@@ -205,14 +202,6 @@ bool renderParticles = true;
 bool renderMesh = false;
 bool renderFiber = false;
 bool renderCube = false;
-
-float* data;
-ParticleSystem particles;
-std::vector<Collider*> colliders;
-std::vector<ForceActuator*> force_acts;
-
-//***EULER***//
-float Pf, Pi,Vf,Vi,Fi;
 
 //You may have to change this code
 void renderPrims() {
@@ -227,7 +216,7 @@ void renderPrims() {
 
 	if (renderParticles) {
 		int startDrawingFromParticle = 0;
-		int numParticlesToDraw =500;
+		int numParticlesToDraw = 1000;
 		Particles::drawParticles(startDrawingFromParticle, numParticlesToDraw);
 	}
 
@@ -245,126 +234,115 @@ void GUI() {
 	ImGui::Begin("Physics Parameters", &show, 0);
 
 	// Do your GUI code here....
-	{	
+	{
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);//FrameRate
-		ImGui::Button("Play/Pause", ImVec2(650, 20));
+		if (ImGui::Button("Play/Pause", ImVec2(650, 20)))
+		{
+
+		}
 		ImGui::Button("Boton", ImVec2(650, 20));
 		ImGui::DragFloat3("GravityControl", WFEdge1, gravity.x, gravity.y, gravity.z, 0);
-		ImGui::DragFloat("Elasticity", &elasticity, 0);
-		ImGui::DragFloat("Friction", FrictionCoefficient, 0);
-		ImGui::DragFloat("SphereMass", &Sphere::massSphere, 0);
+		ImGui::DragFloat("Elasticity", &elasticity, elasticity);
+		ImGui::DragFloat("Friction", FrictionCoefficient, *FrictionCoefficient);
+		ImGui::DragFloat("SphereMass", &Sphere::massSphere, Sphere::massSphere);
 		/*ImGui::DragFloat3("SpherePosition", &Sphere::Sphereposition, &Sphere::Sphereposition.x, &Sphere::Sphereposition.y, &Sphere::Sphereposition.z, 0);*/
 		ImGui::DragFloat("SphereRadius", &Sphere::rad, 0);
-		
-		
+
+
 	}
 	// .........................
-	
+
 	ImGui::End();
 
 	// Example code -- ImGui test window. Most of the sample code is in ImGui::ShowTestWindow()
 	bool show_test_window = false;
-	if(show_test_window) {
+	if (show_test_window) {
 		ImGui::SetNextWindowPos(ImVec2(650, 20), ImGuiSetCond_FirstUseEver);
 		ImGui::ShowTestWindow(&show_test_window);
 	}
 }
 
-float randomFloat(float a, float b) 
-{
+float randomFloat(float a, float b) {
 	float random = ((float)rand()) / (float)RAND_MAX;
 	float diff = b - a;
 	float r = random * diff;
 	return a + r;
 }
 
-void PhysicsInit() {
+void euler(float dt, ParticleSystem &auxParticle, const std::vector<Collider*>& colliders, const std::vector<ForceActuator*>& force_acts)
+{
 
+	for (int i = 0; i < 5000; i++)
+	{
+		glm::vec3 force{ 0,0,0 };
+		glm::vec3 oldpos, oldvel;
+		oldpos = auxParticle.position[i];
+		oldvel = auxParticle.velocity[i];
+		for (int j = 0; j < force_acts.size(); j++)
+		{
+			force += force_acts[j]->computeForce(auxParticle.mass[i], auxParticle.position[i]);
+		}
+
+
+		auxParticle.position[i] = auxParticle.position[i] + dt * auxParticle.velocity[i];
+		auxParticle.velocity[i] = auxParticle.velocity[i] + (dt* (force / auxParticle.mass[i]));
+
+		for (int j = 0; j < colliders.size(); j++)
+		{
+			if ((colliders[j]->checkCollision(oldpos, auxParticle.position[i]) == true))
+			{
+				colliders[j]->computeCollision(oldpos, oldvel, auxParticle.position[i], auxParticle.velocity[i]);
+			}
+		}
+	}
+	data = &particle.position[0].x;
+}
+
+void PhysicsInit() {
 	// Do your initialization code here...
-	
-	Sphere::updateSphere(Sphere::Sphereposition);
-	
+
 	SphereForce *SphForce = new SphereForce;
 	GravityForce *GravForce = new GravityForce;
 	force_acts.push_back(SphForce);
 	force_acts.push_back(GravForce);
 
-	Collider *planeColliderDown  = new PlaneCollider(glm::vec3{0,1,0}, 0);
-	Collider *planeColliderUp    = new PlaneCollider(glm::vec3{0,-1,0}, 10);
+	Collider *planeColliderDown = new PlaneCollider(glm::vec3{ 0,1,0 }, 0);
+	Collider *planeColliderUp = new PlaneCollider(glm::vec3{ 0,-1,0 }, 10);
 
-	Collider *planeColliderLeft  = new PlaneCollider(glm::vec3{1,0,0}, -5);
-	Collider *planeColliderRight = new PlaneCollider(glm::vec3{-1,0,0}, 5);
+	Collider *planeColliderLeft = new PlaneCollider(glm::vec3{ 1,0,0 }, -5);
+	Collider *planeColliderRight = new PlaneCollider(glm::vec3{ -1,0,0 }, 5);
 
-	Collider *planeColliderFront = new PlaneCollider(glm::vec3{0,0,-1}, 5);
-	Collider *planeColliderBack  = new PlaneCollider(glm::vec3{0,0,1}, -5);
+	Collider *planeColliderFront = new PlaneCollider(glm::vec3{ 0,0,-1 }, -5);
+	Collider *planeColliderBack = new PlaneCollider(glm::vec3{ 0,0,1 }, 5);
 
-
-	//Collider *sphereCollider = new SphereCollider;
 
 	colliders.push_back(planeColliderDown);
-	//colliders.push_back(planeColliderUp);
-	/*colliders.push_back(planeColliderLeft);
+	colliders.push_back(planeColliderUp);
+	colliders.push_back(planeColliderLeft);
 	colliders.push_back(planeColliderRight);
 	colliders.push_back(planeColliderFront);
-	colliders.push_back(planeColliderBack);*/
+	colliders.push_back(planeColliderBack);
 
-	//colliders.push_back(sphereCollider);
-
-	for (int i = 0; i < 5000; i++) 
-	{			
-		//*****************INIT PARTICLES*****************//
-										//******X******//  //******Y******//  //******Z******//
-		particles.positions.push_back({ randomFloat(-5,5),randomFloat(5, 10),randomFloat(-5,5) });
-		particles.mass.push_back(randomFloat(1,3));
-		particles.velocity.push_back({ randomFloat(-1,1),randomFloat(-1,1),randomFloat(-1,1) });		
-	}
-	
-	data = &particles.positions[0].x;
-	Particles::updateParticles(0,5000,data);
-	// ...................................
-}
-
-void euler(float dt, ParticleSystem &auxParticle, const std::vector<Collider*>& colliders, const std::vector<ForceActuator*>& force_acts)
-{
 	for (int i = 0; i < 5000; i++)
 	{
-		glm::vec3 force{ 0,0,0 };
-		glm::vec3 oldpos, oldvel;		
-		oldpos = auxParticle.positions[i];
-		oldvel = auxParticle.velocity[i];
-
-		for (int j = 0; j < force_acts.size(); j++)
-		{
-			force += force_acts[j]->computeForce(auxParticle.mass[i], auxParticle.positions[i]);
-		}
-
-		auxParticle.positions[i] = auxParticle.positions[i]+dt*auxParticle.velocity[i];
-		auxParticle.velocity[i] = auxParticle.velocity[i] + (dt* force/auxParticle.mass[i]);
-
-		for (int j = 0; j < colliders.size(); j++) 
-		{
-			if (colliders[j]->checkCollision(oldpos, auxParticle.positions[i]))
-			{
-				colliders[j]->computeCollision(oldpos, oldvel, auxParticle.positions[i], auxParticle.velocity[i]);
-			}
-		}
-		
-		
-		//auxParticle.velocity[i]=auxParticle.velocity[i]
+		particle.position.push_back({ randomFloat(-5,5), randomFloat(5,10), randomFloat(-5,5) });
+		particle.velocity.push_back({ randomFloat(-1,1), randomFloat(-1,1), randomFloat(-1,1) });
+		particle.mass.push_back(randomFloat(1, 2));
 	}
-	
-	data = &particles.positions[0].x;
+	data = &particle.position[0].x;
+	Particles::updateParticles(0, 5000, data);
+	// ...................................
 }
 
 void PhysicsUpdate(float dt) {
 	// Do your update code here...
-	euler(dt, particles,colliders, force_acts);
+	euler(dt, particle, colliders, force_acts);
 	Particles::updateParticles(0, 5000, data);
-	
 	// ...........................
 }
 
 void PhysicsCleanup() {
+	// Do your cleanup code here...
 	// Do your cleanup code here...
 	delete[] data;
 	for (std::vector<Collider*>::iterator it = colliders.begin(); it != colliders.end(); ++it)
@@ -378,5 +356,6 @@ void PhysicsCleanup() {
 		delete (*it);
 	}
 	force_acts.clear();
+	// ............................
 	// ............................
 }
