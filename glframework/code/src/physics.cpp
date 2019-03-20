@@ -7,7 +7,8 @@
 #include <iostream>
 #include <glm/gtx/intersect.hpp>
 
-glm::vec3 gravity = { 0,-9.81,0 };
+glm::vec3 gravity = { 0,2,0 };
+glm::vec3 wind = { 0,0,0 };
 float gravityF[3] = { gravity.x,gravity.y,gravity.z };
 float elasticity = 0.5;
 
@@ -66,12 +67,13 @@ struct FiberStraw
 	
 	Particle particles;
 };
+
 struct ForceActuator
 {
 	virtual glm::vec3 computeForce(float mass, const glm::vec3& position) = 0;
 };
-struct GravityForce :ForceActuator
-{
+
+struct GravityForce :ForceActuator{
 
 	glm::vec3 computeForce(float mass, const glm::vec3& position)
 	{
@@ -79,16 +81,27 @@ struct GravityForce :ForceActuator
 	}
 };
 
+struct WindForce :ForceActuator {
 
-glm::vec3 springforce(const glm::vec3& P1, const glm::vec3& V1,const glm::vec3& P2, const glm::vec3& V2,float L0, float ke, float kd)
+	glm::vec3 computeForce(float mass, const glm::vec3& position)
+	{
+		return wind * mass;
+	}
+};
+
+struct SpringForce :ForceActuator 
 {
+	glm::vec3 computeForce(float mass, const glm::vec3& position)
+	{
+		return glm::vec3(0,0,0);		
+	}
+};
 
-	glm::vec3 force = -(ke*(abs(P1 + P2) - L0) + kd * (V1 - V2)*((P1 - P2) / abs(P1 - P2)))*((P1 - P2) / abs(P1 - P2));
-	return force;
+glm::vec3 springforce(const glm::vec3& P1, const glm::vec3& V1, const glm::vec3& P2, const glm::vec3& V2, float L0, float ke, float kd) 
+{
+	return (-(ke*((P1 - P2) - L0) + kd * (V1 - V2)*((P1 - P2) / (P1 - P2)))*((P1 - P2) / (P1 - P2)));
 }
-/*glm::vec3 computeForces(FiberStraw& fiber, int idx, const std::vector<ForceActuator*>& force_acts) {
-	
-}*/
+
 struct Collider {
 
 	float d;
@@ -130,7 +143,6 @@ struct PlaneCollider : Collider {
 		d = p_d;
 	}
 };
-
 struct SphereCollider : Collider {
 	glm::vec3 sphere_normal = { 0,0,0 };
 	float sphere_d;
@@ -193,7 +205,6 @@ struct SphereCollider : Collider {
 
 
 std::vector<FiberStraw> fibers;
-FiberStraw fiber;
 float* data;
 std::vector<ForceActuator*> force_acts;
 std::vector<Collider*> colliders;
@@ -253,50 +264,44 @@ float randomFloat(float a, float b) {
 }
 void verlet(float dt, FiberStraw &fiber,const std::vector<Collider*>& colliders,const std::vector<ForceActuator*>& force_acts)
 {
-	for (int i = 0; i < 5000; i++)
+	for (int i = 0; i < fiber.particles.mass.size(); i++)
 	{
-		glm::vec3 force{ 0,0,0 };
-		glm::vec3 pos, vel;
-
-		pos = fiber.particles.positions[i];
-		vel = fiber.particles.velocities[i];
-			for (int j = 0; j < force_acts.size(); j++)
-			{
-				force += force_acts[j]->computeForce(fiber.particles.mass[i], fiber.particles.positions[i]);
-			}
-		fiber.particles.positions[i] = fiber.particles.positions[i] + (fiber.particles.positions[i]- fiber.particles.last_position[i])+(force / fiber.particles.mass[i])*pow(dt,2);
-		fiber.particles.last_position[i] = pos;
-		fiber.particles.velocities[i] = (fiber.particles.positions[i] - fiber.particles.last_position[i])/dt;
-		for (int j = 0; j < colliders.size(); j++)
+		glm::vec3 forces;
+		for (int j = 0; j < force_acts.size(); j++)
 		{
-			if ((colliders[j]->checkCollision(pos, fiber.particles.positions[i]) == true))
-			{
-				colliders[j]->computeCollision(pos, vel, fiber.particles.positions[i], fiber.particles.velocities[i]);
-			}
+			forces += force_acts[j]->computeForce(fiber.particles.mass[i], fiber.particles.positions[i]);
 		}
+		fiber.particles.positions[i] = fiber.particles.positions[i]+(fiber.particles.positions[i]- fiber.particles.last_position[i])+forces*(dt*dt);
 	}
-	data = &fiber.particles.positions[0].x; 
+	
 }
 	
 
 void PhysicsInit() {
 	// Do your initialization code here...
-	GravityForce *GravForce = new GravityForce;
+	GravityForce *gForce = new GravityForce;
+	WindForce *wForce = new WindForce;
+	SpringForce *sForce = new SpringForce;
+
+	force_acts.push_back(gForce);
+	force_acts.push_back(wForce);
 	
-	force_acts.push_back(GravForce);
+
 	for (int i = 0; i < 99; i++)
 	{
 		FiberStraw tempFiber;
 		tempFiber.Damping = randomFloat(0.1, 1);
 		tempFiber.elasticity = randomFloat(0.1, 1);
-		tempFiber.OriginaLength = randomFloat(0.5, 2);
-		tempFiber.particles.positions.push_back({ randomFloat(-5,5),randomFloat(0,5), randomFloat(-5,5) });
+		tempFiber.OriginaLength = 1.25;
+		tempFiber.particles.positions.push_back({ randomFloat(-4,4),-1.5/*randomFloat(-1.5,-1.2)*/, randomFloat(-4,4) });
+		tempFiber.particles.last_position.push_back({ randomFloat(-4,4),-1.5/*randomFloat(-1.5,-1.2)*/, randomFloat(-4,4) });
 		tempFiber.particles.velocities.push_back({ randomFloat(-1,1),randomFloat(-1,1), randomFloat(-1,1) });
 		tempFiber.particles.mass.push_back(randomFloat(0.1, 1));
 
 		for (int j = 1; j < 5; j++)
 		{
 			tempFiber.particles.positions.push_back({ tempFiber.particles.positions[0].x,	tempFiber.particles.positions[j - 1].y + tempFiber.OriginaLength, tempFiber.particles.positions[0].z });
+			tempFiber.particles.last_position.push_back({ tempFiber.particles.positions[0].x,	tempFiber.particles.positions[j - 1].y + tempFiber.OriginaLength, tempFiber.particles.positions[0].z });
 			tempFiber.particles.velocities.push_back({ randomFloat(-1,1),randomFloat(-1,1), randomFloat(-1,1) });
 			tempFiber.particles.mass.push_back(randomFloat(0.1, 1));
 		}
@@ -313,13 +318,20 @@ void PhysicsInit() {
 
 void PhysicsUpdate(float dt) {
 	// Do your update code here...
-	//verlet(dt, fiber, colliders, force_acts);
-	//Fiber::updateFiber(data);
+	for (int i = 0; i < fibers.size(); i++)
+	{
+		verlet(dt, fibers[i], colliders, force_acts);
+	}
+	
+	data = &fibers[0].particles.positions[0].x;
+	Fiber::updateFiber(data);
 	// ...........................*/
 }
 
 void PhysicsCleanup() {
 	// Do your cleanup code here...
+
+
 	// ............................
 }
 void GUI() {
