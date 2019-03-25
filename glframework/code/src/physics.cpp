@@ -7,10 +7,11 @@
 #include <iostream>
 #include <glm/gtx/intersect.hpp>
 
-glm::vec3 gravity = { 0,2,0 };
-glm::vec3 wind = { 0,0,0 };
-float gravityF[3] = { gravity.x,gravity.y,gravity.z };
+glm::vec3 gravity = { 0,-1,0 };
+glm::vec3 wind = {0.5f,0,0 };
+
 float elasticity = 0.5;
+float friction = 0.5;
 
 namespace Box {
 	void drawCube();
@@ -89,17 +90,25 @@ struct WindForce :ForceActuator {
 	}
 };
 
-struct SpringForce :ForceActuator 
-{
-	glm::vec3 computeForce(float mass, const glm::vec3& position)
-	{
-		return glm::vec3(0,0,0);		
-	}
-};
 
 glm::vec3 springforce(const glm::vec3& P1, const glm::vec3& V1, const glm::vec3& P2, const glm::vec3& V2, float L0, float ke, float kd) 
 {
-	return (-(ke*((P1 - P2) - L0) + kd * (V1 - V2)*((P1 - P2) / (P1 - P2)))*((P1 - P2) / (P1 - P2)));
+	return -(ke * (glm::length(P1 - P2) - L0) + glm::dot(kd * (V1 - V2), glm::normalize(P1 - P2))) * glm::normalize(P1 - P2);
+}
+glm::vec3 computeForces(FiberStraw& fiber, int idx, const std::vector<ForceActuator*>& force_acts) {
+	
+	glm::vec3 forces;
+	if (idx != 4)
+		forces += springforce(fiber.particles.positions[idx], fiber.particles.velocities[idx], fiber.particles.positions[idx + 1], fiber.particles.velocities[idx + 1], 1.25, 1, 1);
+	
+	forces -= springforce(fiber.particles.positions[idx-1], fiber.particles.velocities[idx-1], fiber.particles.positions[idx], fiber.particles.velocities[idx], 1.25, 1, 1);
+	
+	for (int j = 0; j < force_acts.size(); j++)
+	{
+		forces += force_acts[j]->computeForce(fiber.particles.mass[idx], fiber.particles.positions[idx]);	
+	}
+	
+	return forces;
 }
 
 struct Collider {
@@ -264,16 +273,23 @@ float randomFloat(float a, float b) {
 }
 void verlet(float dt, FiberStraw &fiber,const std::vector<Collider*>& colliders,const std::vector<ForceActuator*>& force_acts)
 {
+	glm::vec3 nextPos[5];
+	glm::vec3 nextVel[5];
 	for (int i = 0; i < fiber.particles.mass.size(); i++)
 	{
-		glm::vec3 forces;
-		for (int j = 0; j < force_acts.size(); j++)
-		{
-			forces += force_acts[j]->computeForce(fiber.particles.mass[i], fiber.particles.positions[i]);
-		}
-		fiber.particles.positions[i] = fiber.particles.positions[i]+(fiber.particles.positions[i]- fiber.particles.last_position[i])+forces*(dt*dt);
+		if (i == 0)
+			continue;
+		nextPos[i] = fiber.particles.positions[i] + (fiber.particles.positions[i] - fiber.particles.last_position[i]) + (computeForces(fiber, i, force_acts)/fiber.particles.mass[i])*(dt*dt);
+		nextVel[i] = (nextPos[i] - fiber.particles.positions[i]) / dt;
 	}
-	
+	for (int i = 0; i < fiber.particles.mass.size(); i++) 
+	{
+		if (i == 0)
+			continue;
+		fiber.particles.last_position[i] = fiber.particles.positions[i];
+		fiber.particles.positions[i] = nextPos[i];
+		fiber.particles.velocities[i] = nextVel[i];
+	}
 }
 	
 
@@ -281,7 +297,7 @@ void PhysicsInit() {
 	// Do your initialization code here...
 	GravityForce *gForce = new GravityForce;
 	WindForce *wForce = new WindForce;
-	SpringForce *sForce = new SpringForce;
+
 
 	force_acts.push_back(gForce);
 	force_acts.push_back(wForce);
@@ -293,17 +309,18 @@ void PhysicsInit() {
 		tempFiber.Damping = randomFloat(0.1, 1);
 		tempFiber.elasticity = randomFloat(0.1, 1);
 		tempFiber.OriginaLength = 1.25;
-		tempFiber.particles.positions.push_back({ randomFloat(-4,4),-1.5/*randomFloat(-1.5,-1.2)*/, randomFloat(-4,4) });
-		tempFiber.particles.last_position.push_back({ randomFloat(-4,4),-1.5/*randomFloat(-1.5,-1.2)*/, randomFloat(-4,4) });
-		tempFiber.particles.velocities.push_back({ randomFloat(-1,1),randomFloat(-1,1), randomFloat(-1,1) });
-		tempFiber.particles.mass.push_back(randomFloat(0.1, 1));
+		glm::vec3 pos = { randomFloat(-4,4),-1.5/*randomFloat(-1.5,-1.2)*/, randomFloat(-4,4) };
+		tempFiber.particles.positions.push_back(pos);
+		tempFiber.particles.last_position.push_back(pos);
+		tempFiber.particles.velocities.push_back({ 0,0,0});
+		tempFiber.particles.mass.push_back(0.5f);
 
 		for (int j = 1; j < 5; j++)
 		{
 			tempFiber.particles.positions.push_back({ tempFiber.particles.positions[0].x,	tempFiber.particles.positions[j - 1].y + tempFiber.OriginaLength, tempFiber.particles.positions[0].z });
 			tempFiber.particles.last_position.push_back({ tempFiber.particles.positions[0].x,	tempFiber.particles.positions[j - 1].y + tempFiber.OriginaLength, tempFiber.particles.positions[0].z });
-			tempFiber.particles.velocities.push_back({ randomFloat(-1,1),randomFloat(-1,1), randomFloat(-1,1) });
-			tempFiber.particles.mass.push_back(randomFloat(0.1, 1));
+			tempFiber.particles.velocities.push_back({ 0,0,0 });
+			tempFiber.particles.mass.push_back(0.5);
 		}
 		fibers.push_back(tempFiber);
 	}
@@ -340,24 +357,34 @@ void GUI() {
 	static bool play = true;
 	bool pause = true;
 	ImGui::Begin("Physics Parameters", &show, 0);
-
+	
 	// Do your GUI code here....
 	{
-
+		
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);//FrameRate
 		ImGui::Checkbox("Play/pause", &play);
 		if (!play)
-			window_flags = 1;
-		pause = !pause;
-
-
-
+			return;
+			
+	
 
 		if (ImGui::Button("ResetSimulation", ImVec2(650, 20))) {
 			PhysicsCleanup();
 
 		}
-	/*	ImGui::DragFloat3("GravityControl", WFEdge1, gravity.x, gravity.y, gravity.z, 0);
+		if (ImGui::TreeNode("Elasticity and Friction")) {
+			ImGui::DragFloat3("ElasticCoefficient", &elasticity);
+			ImGui::DragFloat3("FrictionCoefficient", &friction);
+
+			ImGui::TreePop();
+		}
+		if (ImGui::TreeNode("Forces")) {
+			ImGui::DragFloat3("GravityAccel", static_cast<float*>(&gravity.x));
+			ImGui::DragFloat3("WindAccel", static_cast<float*>(&wind.x));
+
+			ImGui::TreePop();
+		}
+	/*	ImGui::Dr ("GravityControl", WFEdge1, gravity.x, gravity.y, gravity.z, 0);
 		ImGui::DragFloat("Elasticity", &elasticity, elasticity);
 		ImGui::DragFloat("Friction", FrictionCoefficient, *FrictionCoefficient);
 		ImGui::DragFloat("SphereMass", &Sphere::massSphere, Sphere::massSphere);
