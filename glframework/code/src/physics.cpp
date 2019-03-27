@@ -103,7 +103,7 @@ glm::vec3 computeForces(FiberStraw& fiber, int idx, const std::vector<ForceActua
 	
 	forces -= springforce(fiber.particles.positions[idx-1], fiber.particles.velocities[idx-1], fiber.particles.positions[idx], fiber.particles.velocities[idx], 1.25, 1, 1);
 	if(idx>1)
-		forces -= springforce(fiber.particles.positions[idx-2], fiber.particles.velocities[idx-2], fiber.particles.positions[idx], fiber.particles.velocities[idx], 1.25, 0.4, 1);
+		forces -= springforce(fiber.particles.positions[idx-2], fiber.particles.velocities[idx-2], fiber.particles.positions[idx], fiber.particles.velocities[idx], 2.5, 0.4, 1);
 	
 	for (int j = 0; j < force_acts.size(); j++)
 	{
@@ -121,11 +121,10 @@ struct Collider {
 	virtual bool checkCollision(const glm::vec3& prev_pos, const glm::vec3& next_pos) = 0;
 	virtual void getPlane(glm::vec3& normal, float& d) = 0;
 
-	void computeCollision(const glm::vec3& old_pos, const glm::vec3& old_vel, glm::vec3& new_pos, glm::vec3& new_vel)
+	void computeCollision(glm::vec3& old_pos, glm::vec3& new_pos)
 	{
 		getPlane(normal, d);
 		new_pos = new_pos - (1 + elasticity) * ((glm::dot(normal, new_pos) + d)*normal);
-		new_vel = new_pos - (1 + elasticity) * (glm::dot(normal, new_vel)*normal);
 	}
 };
 struct PlaneCollider : Collider {
@@ -277,8 +276,15 @@ void verlet(float dt, FiberStraw &fiber,const std::vector<Collider*>& colliders,
 {
 	glm::vec3 nextPos[5];
 	glm::vec3 nextVel[5];
+	
+	glm::vec3 oldPos[5];
+	glm::vec3 oldVel[5];
+
 	for (int i = 0; i < fiber.particles.mass.size(); i++)
 	{
+		oldPos[i] = fiber.particles.positions[i];
+		oldVel[i] = fiber.particles.velocities[i];
+
 		if (i == 0)
 			continue;
 		nextPos[i] = fiber.particles.positions[i] + (fiber.particles.positions[i] - fiber.particles.last_position[i]) + (computeForces(fiber, i, force_acts)/fiber.particles.mass[i])*(dt*dt);
@@ -292,6 +298,17 @@ void verlet(float dt, FiberStraw &fiber,const std::vector<Collider*>& colliders,
 		fiber.particles.positions[i] = nextPos[i];
 		fiber.particles.velocities[i] = nextVel[i];
 	}
+
+	for (int j = 0; j < colliders.size(); j++)
+	{
+		for (int i = 0; i < fiber.particles.positions.size(); i++)
+		{
+			if ((colliders[j]->checkCollision(oldPos[i], nextPos[i]) == true))
+			{
+				colliders[j]->computeCollision(oldPos[i], fiber.particles.positions[i]);
+			}
+		}		
+	}
 }
 	
 
@@ -299,11 +316,26 @@ void PhysicsInit() {
 	// Do your initialization code here...
 	GravityForce *gForce = new GravityForce;
 	WindForce *wForce = new WindForce;
-
-
 	force_acts.push_back(gForce);
 	force_acts.push_back(wForce);
 	
+	Collider *planeColliderDown  = new PlaneCollider(glm::vec3{ 0,1,0 },   0);
+	colliders.push_back(planeColliderDown);
+
+	Collider *planeColliderUp    = new PlaneCollider(glm::vec3{ 0,-1,0 },    10);
+	colliders.push_back(planeColliderUp);
+
+	Collider *planeColliderLeft  = new PlaneCollider(glm::vec3{ 1,0,0 },   5);
+	colliders.push_back(planeColliderLeft);
+
+	Collider *planeColliderRight = new PlaneCollider(glm::vec3{ -1,0,0 }, 5);
+	colliders.push_back(planeColliderRight);
+
+	Collider *planeColliderFront = new PlaneCollider(glm::vec3{ 0,0,-1 }, 5);
+	colliders.push_back(planeColliderFront);
+
+	Collider *planeColliderBack  = new PlaneCollider(glm::vec3{ 0,0,1 },   5);
+	colliders.push_back(planeColliderBack);	
 
 	for (int i = 0; i < 99; i++)
 	{
@@ -326,12 +358,8 @@ void PhysicsInit() {
 		}
 		fibers.push_back(tempFiber);
 	}
-
 	data = &fibers[0].particles.positions[0].x;
 	Fiber::updateFiber(data);
-
-
-
 	// ...................................
 }
 
