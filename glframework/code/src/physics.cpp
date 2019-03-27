@@ -303,7 +303,7 @@ void verlet(float dt, FiberStraw &fiber,const std::vector<Collider*>& colliders,
 	{
 		for (int i = 0; i < fiber.particles.positions.size(); i++)
 		{
-			if ((colliders[j]->checkCollision(oldPos[i], nextPos[i]) == true))
+			if ((colliders[j]->checkCollision(oldPos[i], nextPos[i])))
 			{
 				colliders[j]->computeCollision(oldPos[i], fiber.particles.positions[i]);
 			}
@@ -322,7 +322,7 @@ void PhysicsInit() {
 	Collider *planeColliderDown  = new PlaneCollider(glm::vec3{ 0,1,0 },   0);
 	colliders.push_back(planeColliderDown);
 
-	Collider *planeColliderUp    = new PlaneCollider(glm::vec3{ 0,-1,0 },    10);
+	Collider *planeColliderUp    = new PlaneCollider(glm::vec3{ 0,-1,0 },  10);
 	colliders.push_back(planeColliderUp);
 
 	Collider *planeColliderLeft  = new PlaneCollider(glm::vec3{ 1,0,0 },   5);
