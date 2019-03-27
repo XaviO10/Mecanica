@@ -9,9 +9,19 @@
 
 glm::vec3 gravity = { 0,1,0 };
 glm::vec3 wind = {0.5f,0,0 };
+//length of the fiber, particle by particle
+float length = 1.25;
+//ke's y kd's
+float ke1 = 1;
+float kd1 = 1;
+float ke2 = 0.4;
+float kd2 = 1;
+
+float time = 0;
 
 float elasticity = 0.5;
 float friction = 0.5;
+static bool play = true;
 
 namespace Box {
 	void drawCube();
@@ -21,11 +31,12 @@ namespace Axis {
 }
 
 namespace Sphere {
-	extern void updateSphere(glm::vec3 pos, float radius = 1.f);
-	extern void drawSphere();
-	glm::vec3 Sphereposition(1.f, 2.f, 0.f);
-	float massSphere = 1.f;
 	float rad = 1.f;
+	extern void updateSphere(glm::vec3 pos, float rad);
+	extern void drawSphere();
+	glm::vec3 Sphereposition(1.f, 5.f, 0.f);
+	float massSphere = 1.f;
+	
 }
 namespace Capsule {
 	extern void updateCapsule(glm::vec3 posA, glm::vec3 posB, float radius = 1.f);
@@ -99,11 +110,11 @@ glm::vec3 computeForces(FiberStraw& fiber, int idx, const std::vector<ForceActua
 	
 	glm::vec3 forces;
 	if (idx != 4)
-		forces += springforce(fiber.particles.positions[idx], fiber.particles.velocities[idx], fiber.particles.positions[idx + 1], fiber.particles.velocities[idx + 1], 1.25, 1, 1);
+		forces += springforce(fiber.particles.positions[idx], fiber.particles.velocities[idx], fiber.particles.positions[idx + 1], fiber.particles.velocities[idx + 1], length, ke1, kd1);
 	
-	forces -= springforce(fiber.particles.positions[idx-1], fiber.particles.velocities[idx-1], fiber.particles.positions[idx], fiber.particles.velocities[idx], 1.25, 1, 1);
+	forces -= springforce(fiber.particles.positions[idx-1], fiber.particles.velocities[idx-1], fiber.particles.positions[idx], fiber.particles.velocities[idx], length, ke1, kd1);
 	if(idx>1)
-		forces -= springforce(fiber.particles.positions[idx-2], fiber.particles.velocities[idx-2], fiber.particles.positions[idx], fiber.particles.velocities[idx], 2.5, 0.4, 1);
+		forces -= springforce(fiber.particles.positions[idx-2], fiber.particles.velocities[idx-2], fiber.particles.positions[idx], fiber.particles.velocities[idx], length*2, ke2, kd2);
 	
 	for (int j = 0; j < force_acts.size(); j++)
 	{
@@ -125,6 +136,7 @@ struct Collider {
 	{
 		getPlane(normal, d);
 		new_pos = new_pos - (1 + elasticity) * ((glm::dot(normal, new_pos) + d)*normal);
+
 	}
 };
 struct PlaneCollider : Collider {
@@ -155,6 +167,7 @@ struct PlaneCollider : Collider {
 };
 struct SphereCollider : Collider {
 	glm::vec3 sphere_normal = { 0,0,0 };
+	glm::vec3 sphere_normal2 = { 0,0,0 };
 	float sphere_d;
 	bool checkCollision(const glm::vec3& prev_pos, const glm::vec3& next_pos) {
 		float checkCollisionX_prev = 0;
@@ -172,33 +185,30 @@ struct SphereCollider : Collider {
 		float a, b;
 
 
-
 		//comprobamos si la prev_pos ha colisionado o no
 		checkCollisionX_prev = prev_pos.x - Sphere::Sphereposition.x;
 		checkCollisionY_prev = prev_pos.y - Sphere::Sphereposition.y;
-		checkCollisionZ_prev = prev_pos.y - Sphere::Sphereposition.z;
+		checkCollisionZ_prev = prev_pos.z - Sphere::Sphereposition.z;
 		checkCollision_prev = sqrt(pow(checkCollisionX_prev, 2) + pow(checkCollisionY_prev, 2) + pow(checkCollisionZ_prev, 2));
 		//comprobamos si la next_pos a colisionado o no
 		checkCollisionX_next = next_pos.x - Sphere::Sphereposition.x;
 		checkCollisionY_next = next_pos.y - Sphere::Sphereposition.y;
-		checkCollisionY_next = next_pos.z - Sphere::Sphereposition.z;
+		checkCollisionZ_next = next_pos.z - Sphere::Sphereposition.z;
 		checkCollision_next = sqrt(pow(checkCollisionX_next, 2) + pow(checkCollisionY_next, 2) + pow(checkCollisionZ_next, 2));
 		//la particula solo colisiona si el prev_pos es más grande que la esfera del radio y si el next_pos es más pequeño que el radio
 		if ((Sphere::rad < checkCollision_prev) && (Sphere::rad > checkCollision_next))
 		{
-			glm::intersectLineSphere(prev_pos, next_pos, Sphere::Sphereposition, Sphere::rad, intersectionPoint1, sphere_normal, intersectionPoint2);
+			glm::intersectLineSphere(prev_pos, next_pos, Sphere::Sphereposition, Sphere::rad, intersectionPoint1, sphere_normal, intersectionPoint2, sphere_normal2);
 			a = sqrt(pow(prev_pos.x - intersectionPoint1.x, 2) + pow(prev_pos.y - intersectionPoint1.y, 2) + pow(prev_pos.z - intersectionPoint1.z, 2));
 			b = sqrt(pow(prev_pos.x - intersectionPoint2.x, 2) + pow(prev_pos.y - intersectionPoint2.y, 2) + pow(prev_pos.z - intersectionPoint2.z, 2));
-
-			if (a < b) {
+			if (a < b) 
+			{
 				sphere_d = -((intersectionPoint1.x*sphere_normal.x) + (intersectionPoint1.y*sphere_normal.y) + (intersectionPoint1.z*sphere_normal.z));
 			}
 			else if (a > b) {
-				sphere_d = -((intersectionPoint2.x*sphere_normal.x) + (intersectionPoint2.y*sphere_normal.y) + (intersectionPoint2.z*sphere_normal.z));
+				sphere_d = -((intersectionPoint2.x*sphere_normal2.x) + (intersectionPoint2.y*sphere_normal2.y) + (intersectionPoint2.z*sphere_normal2.z));
 			}
-			//hace el rebote una vez y ya esta juraria, creo qu es mejor usaar if else que while
-			//implementar las normales
-
+			return true;
 		}
 		else
 		{
@@ -214,6 +224,7 @@ struct SphereCollider : Collider {
 };
 
 
+
 std::vector<FiberStraw> fibers;
 float* data;
 std::vector<ForceActuator*> force_acts;
@@ -222,7 +233,7 @@ std::vector<Collider*> colliders;
 
 
 // Boolean variables allow to show/hide the primitives
-bool renderSphere = false;
+bool renderSphere = true;
 bool renderCapsule = false;
 bool renderParticles = true;
 bool renderMesh = false;
@@ -321,21 +332,24 @@ void PhysicsInit() {
 	
 	Collider *planeColliderDown  = new PlaneCollider(glm::vec3{ 0,1,0 },   0);
 	colliders.push_back(planeColliderDown);
-
+	
 	Collider *planeColliderUp    = new PlaneCollider(glm::vec3{ 0,-1,0 },  10);
 	colliders.push_back(planeColliderUp);
-
+	
 	Collider *planeColliderLeft  = new PlaneCollider(glm::vec3{ 1,0,0 },   5);
 	colliders.push_back(planeColliderLeft);
-
+	
 	Collider *planeColliderRight = new PlaneCollider(glm::vec3{ -1,0,0 }, 5);
 	colliders.push_back(planeColliderRight);
-
+	
 	Collider *planeColliderFront = new PlaneCollider(glm::vec3{ 0,0,-1 }, 5);
 	colliders.push_back(planeColliderFront);
-
+	
 	Collider *planeColliderBack  = new PlaneCollider(glm::vec3{ 0,0,1 },   5);
 	colliders.push_back(planeColliderBack);	
+
+	Collider *sphereCollider= new SphereCollider();
+	colliders.push_back(sphereCollider);
 
 	for (int i = 0; i < 99; i++)
 	{
@@ -365,13 +379,17 @@ void PhysicsInit() {
 
 void PhysicsUpdate(float dt) {
 	// Do your update code here...
-	for (int i = 0; i < fibers.size(); i++)
-	{
-		verlet(dt, fibers[i], colliders, force_acts);
-	}
 	
-	data = &fibers[0].particles.positions[0].x;
-	Fiber::updateFiber(data);
+	if (play) {
+		
+		for (int i = 0; i < fibers.size(); i++)
+		{
+			verlet(dt, fibers[i], colliders, force_acts);
+		}
+		Sphere::updateSphere(Sphere::Sphereposition, Sphere::rad);
+		data = &fibers[0].particles.positions[0].x;
+		Fiber::updateFiber(data);
+	}
 	// ...........................*/
 }
 
@@ -384,7 +402,7 @@ void PhysicsCleanup() {
 void GUI() {
 	ImGuiWindowFlags window_flags = 0;
 	bool show = true;
-	static bool play = true;
+
 	bool pause = true;
 	ImGui::Begin("Physics Parameters", &show, 0);
 	
@@ -393,18 +411,37 @@ void GUI() {
 		
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);//FrameRate
 		ImGui::Checkbox("Play/pause", &play);
-		if (!play)
-			return;
+		
+		
+		/*if (!play) {
+			while (true) {
+				//ImGui::Checkbox("Play/pause", &play);
+				if (play) {
+					break;
+				}
+			}
+		}*/
+
 			
-	
-
 		if (ImGui::Button("ResetSimulation", ImVec2(650, 20))) {
-			PhysicsCleanup();
+			PhysicsInit();
 
+		}
+		if (ImGui::TreeNode("Spring parameters")) {
+			ImGui::DragFloat2("K_Strench", &ke1,ke2);
+			ImGui::DragFloat2("K_Bend", &kd1,kd2);
+			ImGui::DragFloat("ParticleLinkDistance", &length);
+			ImGui::TreePop();
 		}
 		if (ImGui::TreeNode("Elasticity and Friction")) {
 			ImGui::DragFloat3("ElasticCoefficient", &elasticity);
 			ImGui::DragFloat3("FrictionCoefficient", &friction);
+
+			ImGui::TreePop();
+		}
+		if (ImGui::TreeNode("SphereCollider")) {
+			ImGui::DragFloat("SpherePosition", &Sphere::Sphereposition.y);
+			ImGui::DragFloat("SphereRadius", &Sphere::rad);
 
 			ImGui::TreePop();
 		}
