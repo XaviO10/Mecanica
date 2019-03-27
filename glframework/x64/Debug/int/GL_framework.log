@@ -1,6 +1,7 @@
 ﻿  physics.cpp
-c:\users\itus9\onedrive\documentos\mecánica\aa3-springs\mecanica\glframework\code\src\physics.cpp(309): warning C4305: 'argumento': truncamiento de 'double' a 'float'
-c:\users\itus9\onedrive\documentos\mecánica\aa3-springs\mecanica\glframework\code\src\physics.cpp(310): warning C4305: 'argumento': truncamiento de 'double' a 'float'
-  GL_framework.vcxproj -> C:\Users\itus9\OneDrive\Documentos\Mecánica\AA3-SPRINGS\Mecanica\glframework\x64\Debug\GL_framework.exe
+c:\users\xavierortigosacortes\desktop\mecanica\glframework\code\src\physics.cpp(106): warning C4305: 'argument': truncation from 'double' to 'float'
+c:\users\xavierortigosacortes\desktop\mecanica\glframework\code\src\physics.cpp(311): warning C4305: 'argument': truncation from 'double' to 'float'
+c:\users\xavierortigosacortes\desktop\mecanica\glframework\code\src\physics.cpp(312): warning C4305: 'argument': truncation from 'double' to 'float'
+  GL_framework.vcxproj -> C:\Users\xavierortigosacortes\Desktop\Mecanica\glframework\x64\Debug\GL_framework.exe
   0 archivo(s) copiado(s)
   0 archivo(s) copiado(s)

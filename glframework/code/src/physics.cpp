@@ -7,7 +7,7 @@
 #include <iostream>
 #include <glm/gtx/intersect.hpp>
 
-glm::vec3 gravity = { 0,-1,0 };
+glm::vec3 gravity = { 0,1,0 };
 glm::vec3 wind = {0.5f,0,0 };
 
 float elasticity = 0.5;
@@ -102,6 +102,8 @@ glm::vec3 computeForces(FiberStraw& fiber, int idx, const std::vector<ForceActua
 		forces += springforce(fiber.particles.positions[idx], fiber.particles.velocities[idx], fiber.particles.positions[idx + 1], fiber.particles.velocities[idx + 1], 1.25, 1, 1);
 	
 	forces -= springforce(fiber.particles.positions[idx-1], fiber.particles.velocities[idx-1], fiber.particles.positions[idx], fiber.particles.velocities[idx], 1.25, 1, 1);
+	if(idx>1)
+		forces -= springforce(fiber.particles.positions[idx-2], fiber.particles.velocities[idx-2], fiber.particles.positions[idx], fiber.particles.velocities[idx], 1.25, 0.4, 1);
 	
 	for (int j = 0; j < force_acts.size(); j++)
 	{
