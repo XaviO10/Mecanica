@@ -411,16 +411,6 @@ void GUI() {
 		
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);//FrameRate
 		ImGui::Checkbox("Play/pause", &play);
-		
-		
-		/*if (!play) {
-			while (true) {
-				//ImGui::Checkbox("Play/pause", &play);
-				if (play) {
-					break;
-				}
-			}
-		}*/
 
 			
 		if (ImGui::Button("ResetSimulation", ImVec2(650, 20))) {
@@ -434,8 +424,8 @@ void GUI() {
 			ImGui::TreePop();
 		}
 		if (ImGui::TreeNode("Elasticity and Friction")) {
-			ImGui::DragFloat3("ElasticCoefficient", &elasticity);
-			ImGui::DragFloat3("FrictionCoefficient", &friction);
+			ImGui::DragFloat("ElasticCoefficient", &elasticity);
+			ImGui::DragFloat("FrictionCoefficient", &friction);
 
 			ImGui::TreePop();
 		}
