@@ -17,6 +17,8 @@ float kd1 = 1;
 float ke2 = 0.4;
 float kd2 = 1;
 
+
+float angle = 10;
 float time = 0;
 
 float elasticity = 0.5;
@@ -75,8 +77,7 @@ struct FiberStraw
 {
 	float elasticity;
 	float Damping;
-	float OriginaLength;
-	
+	float OriginaLength;	
 	Particle particles;
 };
 
@@ -322,6 +323,8 @@ void verlet(float dt, FiberStraw &fiber,const std::vector<Collider*>& colliders,
 	}
 }
 	
+glm::mat4 rotation =  { glm::vec4{cos(angle),-(sin(angle)),0,0,}, glm::vec4{ sin(angle),cos(angle),0,0, }, glm::vec4{ 0,0,1,0 }, glm::vec4{ 0,0,0,1 } };
+glm::mat4 rotation2 = {glm::vec4{ 1,2,0,0,}, glm::vec4{ 0,1,4,1, }, glm::vec4{ 0,0,1,0, }, glm::vec4{ 0,0,0,1} };
 
 void PhysicsInit() {
 	// Do your initialization code here...
@@ -379,7 +382,6 @@ void PhysicsInit() {
 
 void PhysicsUpdate(float dt) {
 	// Do your update code here...
-	
 	if (play) {
 		
 		for (int i = 0; i < fibers.size(); i++)
@@ -396,7 +398,19 @@ void PhysicsUpdate(float dt) {
 void PhysicsCleanup() {
 	// Do your cleanup code here...
 
+	for (std::vector<ForceActuator*>::iterator it= force_acts.begin(); it != force_acts.end(); ++it)
+	{
+		delete (*it);
+	}
+	force_acts.clear();
 
+	for (std::vector<Collider*>::iterator it = colliders.begin(); it != colliders.end(); ++it)
+	{
+		delete (*it);
+	}
+	colliders.clear();
+
+	fibers.clear();
 	// ............................
 }
 void GUI() {
@@ -414,6 +428,7 @@ void GUI() {
 
 			
 		if (ImGui::Button("ResetSimulation", ImVec2(650, 20))) {
+			PhysicsCleanup();
 			PhysicsInit();
 
 		}
@@ -441,17 +456,8 @@ void GUI() {
 
 			ImGui::TreePop();
 		}
-	/*	ImGui::Dr ("GravityControl", WFEdge1, gravity.x, gravity.y, gravity.z, 0);
-		ImGui::DragFloat("Elasticity", &elasticity, elasticity);
-		ImGui::DragFloat("Friction", FrictionCoefficient, *FrictionCoefficient);
-		ImGui::DragFloat("SphereMass", &Sphere::massSphere, Sphere::massSphere);
-		ImGui::DragFloat3("SpherePosition", SPosition, SPosition[1], SPosition[2], SPosition[3], 0);
-		ImGui::DragFloat("SphereRadius", &Sphere::rad, 0);*/
-
-
 	}
 	// .........................
-
 	ImGui::End();
 
 	// Example code -- ImGui test window. Most of the sample code is in ImGui::ShowTestWindow()
