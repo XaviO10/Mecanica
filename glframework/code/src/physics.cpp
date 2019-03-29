@@ -323,9 +323,6 @@ void verlet(float dt, FiberStraw &fiber,const std::vector<Collider*>& colliders,
 	}
 }
 	
-glm::mat4 rotation =  { glm::vec4{cos(angle),-(sin(angle)),0,0,}, glm::vec4{ sin(angle),cos(angle),0,0, }, glm::vec4{ 0,0,1,0 }, glm::vec4{ 0,0,0,1 } };
-glm::mat4 rotation2 = {glm::vec4{ 1,2,0,0,}, glm::vec4{ 0,1,4,1, }, glm::vec4{ 0,0,1,0, }, glm::vec4{ 0,0,0,1} };
-
 void PhysicsInit() {
 	// Do your initialization code here...
 	GravityForce *gForce = new GravityForce;
@@ -433,8 +430,8 @@ void GUI() {
 
 		}
 		if (ImGui::TreeNode("Spring parameters")) {
-			ImGui::DragFloat2("K_Strench", &ke1,ke2);
-			ImGui::DragFloat2("K_Bend", &kd1,kd2);
+			ImGui::DragFloat("K_Strench", &ke1,ke2);
+			ImGui::DragFloat("K_Bend", &kd1,kd2);
 			ImGui::DragFloat("ParticleLinkDistance", &length);
 			ImGui::TreePop();
 		}
