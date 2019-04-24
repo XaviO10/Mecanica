@@ -60,12 +60,6 @@ struct RigidSphere : Collider {
 		float mass =RandomFloat(0.1,2);
 	
 	}
-
-
-
-
-
-
 	bool checkCollision(const glm::vec3& next_pos, float radius) override {
 		//...
 	}
@@ -79,16 +73,24 @@ bool renderMesh = false;
 bool renderFiber = false;
 bool renderCube = false;
 
-
 float chrono=0;
+
+
 //You may have to change this code
 void renderPrims() {
 	Box::drawCube();
 	Axis::drawAxis();
 
+	if (renderSphere) 
+	{		
+		for (int i = 0; i < 3; i++)
+		{
+			glm::vec3 initPos = { RandomFloat(-4,4), RandomFloat(1,9) ,RandomFloat(-4,4) };
+			Sphere::updateSphere(initPos, 1);
+			Sphere::drawSphere();
+		}		
+	}
 
-	if (renderSphere)
-		Sphere::drawSphere();
 	if (renderCapsule)
 		Capsule::drawCapsule();
 
@@ -131,11 +133,8 @@ void GUI() {
 
 void PhysicsInit() {
 	
-	glm::vec3 initPos = { RandomFloat(-5,5), RandomFloat(0,10),RandomFloat(-5,5) };
-	float radius = RandomFloat(0.1, 3);
-
-	Sphere::updateSphere(initPos, radius);
-
+	
+	
 }
 
 void euler(float dt, RigidSphere& sph) 
@@ -150,15 +149,19 @@ void PhysicsUpdate(float dt)
 	std::cout << chrono<< std::endl;
 	if (chrono >= 15) 
 	{
-		glm::vec3 initPos = { RandomFloat(-5,5), RandomFloat(0,10),RandomFloat(-5,5) };
-		float radius = RandomFloat(0.1, 3);
-		Sphere::updateSphere(initPos, radius);
+		for (int i = 0; i < 3; i++)
+		{
+			glm::vec3 initPos = { RandomFloat(-4,4), RandomFloat(1,9) ,RandomFloat(-4,4) };
+			Sphere::updateSphere(initPos, 1);
+			Sphere::drawSphere();
+		}
 		chrono = 0;
 	}
 
 }
 
 void PhysicsCleanup() {
-	// Do your cleanup code here...
-	// ............................
+	
+
+
 }
