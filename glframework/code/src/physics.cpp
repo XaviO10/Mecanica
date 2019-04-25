@@ -2,6 +2,7 @@
 #include <imgui\imgui_impl_sdl_gl3.h>
 #include <glm\gtc\matrix_transform.hpp>
 #include <iostream>
+#include<vector>
 
 namespace Box {
 	void drawCube();
@@ -38,32 +39,41 @@ namespace Cube {
 	extern void updateCube(const glm::mat4& transform);
 	extern void drawCube();
 }
-
 float RandomFloat(float a, float b) {
 	float random = ((float)rand()) / (float)RAND_MAX;
 	float diff = b - a;
 	float r = random * diff;
 	return a + r;
 }
-
 struct Collider {
 	virtual bool checkCollision(const glm::vec3& next_pos, float radius) = 0;
 };
 
 struct RigidSphere : Collider {
 
-	void initShphere()
-	{
+	
 		glm::vec3 linearMomentum = {RandomFloat(0.1,2),RandomFloat(0.1,2) ,RandomFloat(0.1,2) };
 		glm::vec3 angularMomentum = { RandomFloat(0.1,2),RandomFloat(0.1,2) ,RandomFloat(0.1,2) };
 		glm::vec3 initPos = { RandomFloat(-5,5),RandomFloat(0,10) ,RandomFloat(-5,5) };
 		float mass =RandomFloat(0.1,2);
 	
-	}
+		void restart() 
+		{
+			linearMomentum = { RandomFloat(0.1,2),RandomFloat(0.1,2) ,RandomFloat(0.1,2) };
+			angularMomentum = { RandomFloat(0.1,2),RandomFloat(0.1,2) ,RandomFloat(0.1,2) };
+			initPos = { RandomFloat(-5,5),RandomFloat(0,10) ,RandomFloat(-5,5) };
+			mass = RandomFloat(0.1, 2);
+		}
+
 	bool checkCollision(const glm::vec3& next_pos, float radius) override {
 		//...
+		return false;
 	}
 };
+std::vector<RigidSphere> Spheres;
+
+
+
 
 // Boolean variables allow to show/hide the primitives
 bool renderSphere = true;
@@ -75,7 +85,6 @@ bool renderCube = false;
 
 float chrono=0;
 
-
 //You may have to change this code
 void renderPrims() {
 	Box::drawCube();
@@ -85,8 +94,7 @@ void renderPrims() {
 	{		
 		for (int i = 0; i < 3; i++)
 		{
-			glm::vec3 initPos = { RandomFloat(-4,4), RandomFloat(1,9) ,RandomFloat(-4,4) };
-			Sphere::updateSphere(initPos, 1);
+			Sphere::updateSphere(Spheres[i].initPos, 1);
 			Sphere::drawSphere();
 		}		
 	}
@@ -131,9 +139,14 @@ void GUI() {
 	}
 }
 
-void PhysicsInit() {
-	
-	
+void PhysicsInit() 
+{
+	RigidSphere a;
+	RigidSphere b;
+	RigidSphere c;
+	Spheres.push_back(a);
+	Spheres.push_back(b);
+	Spheres.push_back(c);
 	
 }
 
@@ -147,13 +160,11 @@ void PhysicsUpdate(float dt)
 {
 	chrono += dt;
 	std::cout << chrono<< std::endl;
-	if (chrono >= 15) 
+	if (chrono >= 5) 
 	{
-		for (int i = 0; i < 3; i++)
+		for (int i = 0; i < Spheres.size(); i++)
 		{
-			glm::vec3 initPos = { RandomFloat(-4,4), RandomFloat(1,9) ,RandomFloat(-4,4) };
-			Sphere::updateSphere(initPos, 1);
-			Sphere::drawSphere();
+			Spheres[i].restart();
 		}
 		chrono = 0;
 	}
