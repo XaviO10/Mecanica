@@ -1,8 +1,14 @@
 #include <imgui\imgui.h>
 #include <imgui\imgui_impl_sdl_gl3.h>
 #include <glm\gtc\matrix_transform.hpp>
+#include <vector>
+#include <windows.h>
 #include <iostream>
-#include<vector>
+#include <glm/gtx/intersect.hpp>
+static bool play = true;
+glm::vec3 gravity = { 0,1,0 };
+float elasticity = 0.5;
+#define MAX_SPHERES 3
 
 namespace Box {
 	void drawCube();
@@ -12,7 +18,7 @@ namespace Axis {
 }
 
 namespace Sphere {
-	extern void updateSphere(glm::vec3 pos, float radius = 1.f);
+	extern void updateSphere(glm::vec3 pos, float radius);
 	extern void drawSphere();
 }
 namespace Capsule {
@@ -56,6 +62,7 @@ struct RigidSphere : Collider {
 		glm::vec3 angularMomentum = { RandomFloat(0.1,2),RandomFloat(0.1,2) ,RandomFloat(0.1,2) };
 		glm::vec3 initPos = { RandomFloat(-5,5),RandomFloat(0,10) ,RandomFloat(-5,5) };
 		float mass =RandomFloat(0.1,2);
+		float radius = RandomFloat(0.1, 2);
 	
 		void restart() 
 		{
@@ -63,6 +70,7 @@ struct RigidSphere : Collider {
 			angularMomentum = { RandomFloat(0.1,2),RandomFloat(0.1,2) ,RandomFloat(0.1,2) };
 			initPos = { RandomFloat(-5,5),RandomFloat(0,10) ,RandomFloat(-5,5) };
 			mass = RandomFloat(0.1, 2);
+			radius = RandomFloat(0.1, 2);
 		}
 
 	bool checkCollision(const glm::vec3& next_pos, float radius) override {
@@ -70,7 +78,7 @@ struct RigidSphere : Collider {
 		return false;
 	}
 };
-std::vector<RigidSphere> Spheres;
+std::vector<RigidSphere*> Spheres;
 
 
 
@@ -94,7 +102,7 @@ void renderPrims() {
 	{		
 		for (int i = 0; i < 3; i++)
 		{
-			Sphere::updateSphere(Spheres[i].initPos, 1);
+			Sphere::updateSphere(Spheres[i]->initPos, Spheres[i]->radius);
 			Sphere::drawSphere();
 		}		
 	}
@@ -118,35 +126,15 @@ void renderPrims() {
 }
 
 
-void GUI() {
-	bool show = true;
-	ImGui::Begin("Physics Parameters", &show, 0);
 
-	// Do your GUI code here....
-	{	
-		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);//FrameRate
-		
-	}
-	// .........................
-	
-	ImGui::End();
-
-	// Example code -- ImGui test window. Most of the sample code is in ImGui::ShowTestWindow()
-	bool show_test_window = false;
-	if(show_test_window) {
-		ImGui::SetNextWindowPos(ImVec2(650, 20), ImGuiSetCond_FirstUseEver);
-		ImGui::ShowTestWindow(&show_test_window);
-	}
-}
 
 void PhysicsInit() 
 {
-	RigidSphere a;
-	RigidSphere b;
-	RigidSphere c;
-	Spheres.push_back(a);
-	Spheres.push_back(b);
-	Spheres.push_back(c);
+	for (int i = 0; i < MAX_SPHERES; i++) 
+	{
+		RigidSphere* a = new RigidSphere;
+		Spheres.push_back(a);
+	}
 	
 }
 
@@ -156,23 +144,82 @@ void euler(float dt, RigidSphere& sph)
 }
 
 
-void PhysicsUpdate(float dt) 
+void PhysicsUpdate(float dt)
 {
 	chrono += dt;
-	std::cout << chrono<< std::endl;
-	if (chrono >= 5) 
+	std::cout << chrono << std::endl;
+
+	for (int i = 0; i < Spheres.size(); i++)
+	{
+
+	}
+
+	if (chrono >= 5)
 	{
 		for (int i = 0; i < Spheres.size(); i++)
 		{
-			Spheres[i].restart();
+			for (std::vector<RigidSphere*>::iterator it = Spheres.begin(); it != Spheres.end(); ++it)
+			{
+				delete (*it);
+			}
+			Spheres.clear();
+			PhysicsInit();
 		}
 		chrono = 0;
 	}
 
 }
 
-void PhysicsCleanup() {
-	
+void PhysicsCleanup()
+{
+	for (std::vector<RigidSphere*>::iterator it = Spheres.begin(); it != Spheres.end(); ++it)
+	{
+		delete (*it);
+	}
+	Spheres.clear();
+}
+void GUI() {
+	ImGuiWindowFlags window_flags = 0;
+	bool show = true;
 
+	bool pause = true;
+	ImGui::Begin("Physics Parameters", &show, 0);
 
+	// Do your GUI code here....
+	{
+
+		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);//FrameRate
+		ImGui::Checkbox("Play/pause", &play);
+
+		if (ImGui::Button("ResetSimulation", ImVec2(650, 20))) {
+			PhysicsCleanup();
+			PhysicsInit();
+		}
+		
+		
+		ImGui::DragFloat3("GravityAccel", static_cast<float*>(&gravity.x));
+		ImGui::DragFloat3("Elasticity Coefficient", &elasticity);
+
+		if (ImGui::TreeNode("Spheres")) {
+			ImGui::DragFloat("SphereMass_0", &Spheres[0]->mass);
+			ImGui::DragFloat("SphereRadius_0", &Spheres[0]->radius, 0); 
+			ImGui::DragFloat("SphereMass_1", &Spheres[1]->mass);
+			ImGui::DragFloat("SphereRadius_1", &Spheres[1]->radius, 0);
+			ImGui::DragFloat("SphereMass_2", &Spheres[2]->mass);
+			ImGui::DragFloat("SphereRadius_2", &Spheres[2]->radius, 0);
+
+			ImGui::TreePop();
+		}
+
+	}
+	// .........................
+
+	ImGui::End();
+
+	// Example code -- ImGui test window. Most of the sample code is in ImGui::ShowTestWindow()
+	bool show_test_window = false;
+	if (show_test_window) {
+		ImGui::SetNextWindowPos(ImVec2(650, 20), ImGuiSetCond_FirstUseEver);
+		ImGui::ShowTestWindow(&show_test_window);
+	}
 }
