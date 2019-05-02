@@ -5,6 +5,7 @@
 #include <windows.h>
 #include <iostream>
 #include <glm/gtx/intersect.hpp>
+
 static bool play = true;
 glm::vec3 gravity = { 0,1,0 };
 float elasticity = 0.5;
@@ -54,34 +55,68 @@ float RandomFloat(float a, float b) {
 struct Collider {
 	virtual bool checkCollision(const glm::vec3& next_pos, float radius) = 0;
 };
-
 struct RigidSphere : Collider {
 
 	
-		glm::vec3 linearMomentum = {RandomFloat(0.1,2),RandomFloat(0.1,2) ,RandomFloat(0.1,2) };
-		glm::vec3 angularMomentum = { RandomFloat(0.1,2),RandomFloat(0.1,2) ,RandomFloat(0.1,2) };
-		glm::vec3 initPos = { RandomFloat(-5,5),RandomFloat(0,10) ,RandomFloat(-5,5) };
-		float mass =RandomFloat(0.1,2);
-		float radius = RandomFloat(0.1, 2);
+	float inertiaTensor = 1;
+	glm::vec3 velocity;
+	glm::vec3 linearMomentum = {RandomFloat(0.1,2),RandomFloat(0.1,2) ,RandomFloat(0.1,2) };
+	glm::vec3 angularMomentum = { RandomFloat(0.1,2),RandomFloat(0.1,2) ,RandomFloat(0.1,2) };
+	glm::vec3 initPos = { RandomFloat(-5,5),RandomFloat(0,10) ,RandomFloat(-5,5) };
+	float mass =RandomFloat(0.1,2);
+	float radius = RandomFloat(0.1, 2);
 	
-		void restart() 
-		{
-			linearMomentum = { RandomFloat(0.1,2),RandomFloat(0.1,2) ,RandomFloat(0.1,2) };
-			angularMomentum = { RandomFloat(0.1,2),RandomFloat(0.1,2) ,RandomFloat(0.1,2) };
-			initPos = { RandomFloat(-5,5),RandomFloat(0,10) ,RandomFloat(-5,5) };
-			mass = RandomFloat(0.1, 2);
-			radius = RandomFloat(0.1, 2);
-		}
+	void restart() 
+	{
+		linearMomentum = { RandomFloat(0.1,2),RandomFloat(0.1,2) ,RandomFloat(0.1,2) };
+		angularMomentum = { RandomFloat(0.1,2),RandomFloat(0.1,2) ,RandomFloat(0.1,2) };
+		initPos = { RandomFloat(-5,5),RandomFloat(0,10) ,RandomFloat(-5,5) };
+		mass = RandomFloat(0.1, 2);
+		radius = RandomFloat(0.1, 2);
+	}
 
-	bool checkCollision(const glm::vec3& next_pos, float radius) override {
-		//...
+	bool checkCollision(const glm::vec3& next_pos, float radius) override 
+	{
+		
+
+
+
 		return false;
 	}
 };
+struct PlaneCol : Collider 
+{
+	float p_d;
+	glm::vec3 p_normal;
+
+	PlaneCol(glm::vec3 _nrmal, float _d)
+	{
+		p_normal = _nrmal;
+		p_d = _d;
+	}
+
+	bool checkCollision(const glm::vec3& next_pos, float radius) override 
+	{
+		float distanceNext = ((glm::dot(next_pos, p_normal)) + p_d) / glm::length(p_normal);
+		if (distanceNext < radius) 
+		{
+			
+			return true;
+		}
+		else return false;
+		
+	}
+};
+
 std::vector<RigidSphere*> Spheres;
+Collider *planeColliderDown = new PlaneCol(glm::vec3{ 0,1,0 }, 0);
+Collider *planeColliderUp = new PlaneCol(glm::vec3{ 0,-1,0 }, 10);
 
+Collider *planeColliderLeft = new PlaneCol(glm::vec3{ 1,0,0 }, 5);
+Collider *planeColliderRight = new PlaneCol(glm::vec3{ -1,0,0 }, 5);
 
-
+Collider *planeColliderFront = new PlaneCol(glm::vec3{ 0,0,-1 }, 5);
+Collider *planeColliderBack = new PlaneCol(glm::vec3{ 0,0,1 }, 5);
 
 // Boolean variables allow to show/hide the primitives
 bool renderSphere = true;
@@ -125,11 +160,9 @@ void renderPrims() {
 		Cube::drawCube();
 }
 
+void PhysicsInit()
+{	
 
-
-
-void PhysicsInit() 
-{
 	for (int i = 0; i < MAX_SPHERES; i++) 
 	{
 		RigidSphere* a = new RigidSphere;
@@ -140,21 +173,31 @@ void PhysicsInit()
 
 void euler(float dt, RigidSphere& sph) 
 {
+	if(planeColliderDown->checkCollision(sph.initPos, sph.radius)) std::cout << "COLISON PLANO ABAJO" << std::endl;
+	if(planeColliderUp->checkCollision(sph.initPos, sph.radius))	std::cout << "COLISON PLANO ARRIBA" << std::endl;
+
+	if(planeColliderLeft->checkCollision(sph.initPos, sph.radius))std::cout << "COLISON PLANO LEFT" << std::endl;
+	if(planeColliderRight->checkCollision(sph.initPos, sph.radius))std::cout << "COLISON PLANO RIGHT" << std::endl;
 	
+	if(planeColliderFront->checkCollision(sph.initPos, sph.radius))std::cout << "COLISON PLANO FRONT" << std::endl;
+	if(planeColliderBack->checkCollision(sph.initPos, sph.radius))std::cout << "COLISON PLANO BACK" << std::endl;
+	//sph.velocity = sph.linearMomentum / sph.mass;
+	//sph.linearMomentum = sph.linearMomentum + (dt*sph.mass*sph.velocity);
 }
 
 
 void PhysicsUpdate(float dt)
 {
 	chrono += dt;
-	std::cout << chrono << std::endl;
 
 	for (int i = 0; i < Spheres.size(); i++)
 	{
-
+		euler(dt,*Spheres[i]);
 	}
 
-	if (chrono >= 5)
+	//std::cout << chrono << std::endl;
+
+	if (chrono >= 3)
 	{
 		for (int i = 0; i < Spheres.size(); i++)
 		{
