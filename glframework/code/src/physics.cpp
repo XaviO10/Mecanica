@@ -244,8 +244,8 @@ void euler(float dt, RigidSphere* sph)
 			glm::vec3 ra = glm::vec3(sph->radius - sph->stateV.position.x, sph-> radius - sph->stateV.position.y, sph->radius - sph->stateV.position.x);
 
 			sph->inertiaTensor = glm::mat3(sph->mass*((pow(ra.y, 2)) + pow(ra.z, 2)), -sph->mass*ra.x*ra.y, -sph->mass*ra.x*ra.z,
-				-sph->mass*ra.y*ra.x, sph->mass*((pow(ra.x * 2)) + pow(ra.z, 2)), -sph->mass*ra.y*ra.z,
-				-sph->mass*ra.z*ra.x, -sph->mass*ra.z*ra.y, sph->mass((pow(ra.x, 2)) + pow(ra.y, 2)));
+				-sph->mass*ra.y*ra.x, sph->mass*((pow(ra.x, 2)) + pow(ra.z, 2)), -sph->mass*ra.y*ra.z,
+				-sph->mass*ra.z*ra.x, -sph->mass*ra.z*ra.y, sph->mass*((pow(ra.x, 2)) + pow(ra.y, 2)));
 
 			glm::vec3 rb = glm::vec3(col->radius - col->stateV.position.x,
 				col->radius - col->stateV.position.y,
@@ -253,8 +253,8 @@ void euler(float dt, RigidSphere* sph)
 
 
 			col->inertiaTensor = glm::mat3(col->mass*((pow(rb.y, 2)) + pow(rb.z, 2)), -col->mass*rb.x*rb.y, -col->mass*rb.x*rb.z,
-				-col->mass*rb.y*rb.x, col->mass*((pow(rb.x * 2)) + pow(rb.z, 2)), -col->mass*rb.y*rb.z,
-				-col->mass*rb.z*rb.x, -col->mass*rb.z*rb.y, col->mass((pow(rb.x, 2)) + pow(rb.y, 2)));
+				-col->mass*rb.y*rb.x, col->mass*((pow(rb.x, 2)) + pow(rb.z, 2)), -col->mass*rb.y*rb.z,
+				-col->mass*rb.z*rb.x, -col->mass*rb.z*rb.y, col->mass*((pow(rb.x, 2)) + pow(rb.y, 2)));
 
 			//computeImpulseCorrection()
 			computeImpulseCorrection(sph->mass, ra, sph->inertiaTensor,
