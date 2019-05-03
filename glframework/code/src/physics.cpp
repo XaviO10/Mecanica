@@ -3,6 +3,7 @@
 #include <glm\gtc\matrix_transform.hpp>
 #include <vector>
 #include <windows.h>
+#include <glm/gtc/type_ptr.hpp>
 #include <iostream>
 #include <glm/gtx/intersect.hpp>
 
@@ -38,7 +39,7 @@ struct Collider {
 	virtual bool checkCollision(const glm::vec3& next_pos, float radius) = 0;
 };
 
-struct RigidSphere : Collider {
+struct RigidSphere : public Collider {
 	glm::mat3 inertiaTensor;//inerta tensor
 	glm::vec3 velocity;
 	
@@ -64,6 +65,7 @@ struct RigidSphere : Collider {
 		return false;
 	}
 };
+std::vector<RigidSphere*> Spheres;
 struct PlaneCol : Collider 
 {
 	float p_d;
@@ -98,12 +100,9 @@ struct SphereCollider : Collider {
 		float checkCollisionY_next = 0;
 		float checkCollisionZ_next = 0;
 		float checkCollision_next = 0;
+		float a, b;
 		glm::vec3 intersectionPoint1 = { 0,0,0 };
 		glm::vec3 intersectionPoint2 = { 0,0,0 };
-		glm::vec3 vectorpFinal = { 0,0,0 };
-		glm::vec3 equacionRecta = { 0,0,0 };
-		float a, b;
-
 
 		//comprobamos si la prev_pos ha colisionado o no
 		checkCollisionX_prev = prev_pos.x - Sphere::Sphereposition.x;
@@ -115,27 +114,27 @@ struct SphereCollider : Collider {
 		checkCollisionY_next = next_pos.y - Sphere::Sphereposition.y;
 		checkCollisionZ_next = next_pos.z - Sphere::Sphereposition.z;
 		checkCollision_next = sqrt(pow(checkCollisionX_next, 2) + pow(checkCollisionY_next, 2) + pow(checkCollisionZ_next, 2));
-		//la particula solo colisiona si el prev_pos es más grande que la esfera del radio y si el next_pos es más pequeño que el radio
-	/*	for (int i = 0; i < 3; i++) {
-			if ((Spheres[i]->radius < checkCollision_prev) && (Spheres[i]->radius > checkCollision_next))
-			{
-				glm::intersectLineSphere(prev_pos, next_pos, Sphere::Sphereposition, Spheres[i]->radius, intersectionPoint1, sphere_normal, intersectionPoint2, sphere_normal2);
-				a = sqrt(pow(prev_pos.x - intersectionPoint1.x, 2) + pow(prev_pos.y - intersectionPoint1.y, 2) + pow(prev_pos.z - intersectionPoint1.z, 2));
-				b = sqrt(pow(prev_pos.x - intersectionPoint2.x, 2) + pow(prev_pos.y - intersectionPoint2.y, 2) + pow(prev_pos.z - intersectionPoint2.z, 2));
-				if (a < b)
-				{
-					sphere_d = -((intersectionPoint1.x*sphere_normal.x) + (intersectionPoint1.y*sphere_normal.y) + (intersectionPoint1.z*sphere_normal.z));
-				}
-				else if (a > b) {
-					sphere_d = -((intersectionPoint2.x*sphere_normal2.x) + (intersectionPoint2.y*sphere_normal2.y) + (intersectionPoint2.z*sphere_normal2.z));
-				}
-				return true;
+		//comprueba si la distancia entre dos obstaculos es mas grande que la mitad de 
+		//la suma del tamaño de los dos para asi ver si estan colisionando
+	     for (int i = 0; i < 3; i++) {
+			 if (checkCollision_next> Spheres[i]->radius+Spheres[i+1]->radius) {
+																				//la suma del tamaño de los dos para asi ver si estan colisionando
+				 glm::intersectLineSphere(prev_pos, next_pos, Sphere::Sphereposition, Spheres[i]->radius, intersectionPoint1, sphere_normal, intersectionPoint2, sphere_normal2);
+				 a = sqrt(pow(prev_pos.x - intersectionPoint1.x, 2) + pow(prev_pos.y - intersectionPoint1.y, 2) + pow(prev_pos.z - intersectionPoint1.z, 2));
+				 b = sqrt(pow(prev_pos.x - intersectionPoint2.x, 2) + pow(prev_pos.y - intersectionPoint2.y, 2) + pow(prev_pos.z - intersectionPoint2.z, 2));
+				 if (a < b)
+				 {
+					 sphere_d = -((intersectionPoint1.x*sphere_normal.x) + (intersectionPoint1.y*sphere_normal.y) + (intersectionPoint1.z*sphere_normal.z));
+				 }
+				 else if (a > b) {
+					 sphere_d = -((intersectionPoint2.x*sphere_normal2.x) + (intersectionPoint2.y*sphere_normal2.y) + (intersectionPoint2.z*sphere_normal2.z));
+				 }
+				 
+				 return true;													
+
 			}
-			else
-			{
-				return false;
-			}
-		}*/
+			 return false;
+		}
 
 	}
 	void getPlane(glm::vec3& normal, float& d)
@@ -145,7 +144,7 @@ struct SphereCollider : Collider {
 	}
 };
 
-std::vector<RigidSphere*> Spheres;
+
 Collider *planeColliderDown = new PlaneCol(glm::vec3{ 0,1,0 }, 0);
 Collider *planeColliderUp = new PlaneCol(glm::vec3{ 0,-1,0 }, 10);
 
@@ -154,6 +153,9 @@ Collider *planeColliderRight = new PlaneCol(glm::vec3{ -1,0,0 }, 5);
 
 Collider *planeColliderFront = new PlaneCol(glm::vec3{ 0,0,-1 }, 5);
 Collider *planeColliderBack = new PlaneCol(glm::vec3{ 0,0,1 }, 5);
+std::vector<RigidSphere*> colliders;
+
+
 
 
 // Boolean variables allow to show/hide the primitives
@@ -194,39 +196,41 @@ void PhysicsInit()
 	
 }
 							   
-float computeImpulseCorrection(float massA, glm::vec3 ra, glm::mat3 invIa, float massB, glm::vec3 rb, glm::mat3 invIb, float vrel, float epsilon, glm::vec3 normal) 
+void computeImpulseCorrection(float massA, glm::vec3 ra, glm::mat3 invIa, float massB, glm::vec3 rb, glm::mat3 invIb, float vrel, float epsilon, glm::vec3 normal) 
 {
 	float up = -(1+epsilon)*vrel;
-	float down = ((1/massA)+(1/massB)+normal)*(glm::cross((	(glm::cross(invIa*(glm::cross(ra,normal)),ra))+normal*(  (invIb*(glm::cross(rb, normal))))),	rb));
+	const float * down = glm::value_ptr(((1/massA)+(1/massB)+normal)*(glm::cross((	(glm::cross(invIa*(glm::cross(ra,normal)),ra))+normal*(  (invIb*(glm::cross(rb, normal))))),	rb)));
 }
 
 void euler(float dt, RigidSphere* sph)
+
 {
-	for (RigidSphere*col : colliders) {
+	for (RigidSphere * col : colliders)
+	{
 		if (col->checkCollision(sph->position, sph->radius)) {
-			//tenim el collider i la normal del collider
-			//calculem inertia matrix
-			glm::vec3 ra = glm::vec3(sph->radius - sph->position.x, sph-> radius - sph->position.y, sph->radius - sph->position.x);
+			
+			//calculamos inertia matrix
+			glm::vec3 ra = glm::vec3(sph->radius - sph->position.x, sph->radius - sph->position.y, sph->radius - sph->position.x);
 
 			sph->inertiaTensor = glm::mat3(sph->mass*((pow(ra.y, 2)) + pow(ra.z, 2)), -sph->mass*ra.x*ra.y, -sph->mass*ra.x*ra.z, -sph->mass*ra.y*ra.x, sph->mass*((pow(ra.x, 2)) + pow(ra.z, 2)), -sph->mass*ra.y*ra.z,
-			-sph->mass*ra.z*ra.x, -sph->mass*ra.z*ra.y, sph->mass*((pow(ra.x, 2)) + pow(ra.y, 2)));
+				-sph->mass*ra.z*ra.x, -sph->mass*ra.z*ra.y, sph->mass*((pow(ra.x, 2)) + pow(ra.y, 2)));
 
 			glm::vec3 rb = glm::vec3(col->radius - col->position.x, col->radius - col->position.y, col->radius - col->position.z);
 
 
 			col->inertiaTensor = glm::mat3(col->mass*((pow(rb.y, 2)) + pow(rb.z, 2)), -col->mass*rb.x*rb.y, -col->mass*rb.x*rb.z, -col->mass*rb.y*rb.x, col->mass*((pow(rb.x, 2)) + pow(rb.z, 2)), -col->mass*rb.y*rb.z,
-			-col->mass*rb.z*rb.x, -col->mass*rb.z*rb.y, col->mass*((pow(rb.x, 2)) + pow(rb.y, 2)));
+				-col->mass*rb.z*rb.x, -col->mass*rb.z*rb.y, col->mass*((pow(rb.x, 2)) + pow(rb.y, 2)));
 
-			//computeImpulseCorrection()
-			computeImpulseCorrection(sph->mass, ra, sph->inertiaTensor,col->mass, rb, col->inertiaTensor,sph->velocity, Sphere::epsilon);
-			
+			//computeImpulseCorrection
+			//computeImpulseCorrection(sph->mass, ra, sph->inertiaTensor,col->mass, rb, col->inertiaTensor, sph->velocity, Sphere::epsilon);
+
 
 			//update colliders
 		}
 
-		if (planeColliderUp->checkCollision(col->position, col->radius)) 
+		if (planeColliderUp->checkCollision(col->position, col->radius))//rebote con los planos
 		{
-			//fer el rebot amb la plane1 normal
+			
 		}
 
 	}
