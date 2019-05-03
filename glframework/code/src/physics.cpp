@@ -237,7 +237,7 @@ void PhysicsInit()
 
 void euler(float dt, RigidSphere* sph)
 {
-	for (RigidSphere*col : colliders) {
+	/*for (RigidSphere*col : colliders) {
 		if (col->checkCollision(sph->stateV.position, sph->radius)) {
 			//tenim el collider i la normal del collider
 			//calculem inertia matrix
@@ -259,7 +259,7 @@ void euler(float dt, RigidSphere* sph)
 			//computeImpulseCorrection()
 			computeImpulseCorrection(sph->mass, ra, sph->inertiaTensor,
 				col->mass, rb, col->inertiaTensor,
-				sph->velocity, Sphere::epsilon,/*getnormal*/);
+				sph->velocity, Sphere::epsilon,/*getnormal);
 
 			//update colliders
 		}
@@ -267,7 +267,7 @@ void euler(float dt, RigidSphere* sph)
 			//fer el rebot amb la plane1 normal
 		}
 
-	}
+	}*/
 	if (planeColliderDown->checkCollision(sph->initPos, sph->radius)) std::cout << "COLISON PLANO ABAJO" << std::endl;
 	if (planeColliderUp->checkCollision(sph->initPos, sph->radius))	std::cout << "COLISON PLANO ARRIBA" << std::endl;
 
@@ -284,27 +284,31 @@ void euler(float dt, RigidSphere* sph)
 
 void PhysicsUpdate(float dt)
 {
-	chrono += dt;
+	if (play) {
 
-	for (int i = 0; i < Spheres.size(); i++)
-	{
-		euler(dt,Spheres[i]);
-	}
 
-	//std::cout << chrono << std::endl;
+		chrono += dt;
 
-	if (chrono >= 15)
-	{
 		for (int i = 0; i < Spheres.size(); i++)
 		{
-			for (std::vector<RigidSphere*>::iterator it = Spheres.begin(); it != Spheres.end(); ++it)
-			{
-				delete (*it);
-			}
-			Spheres.clear();
-			PhysicsInit();
+			euler(dt, Spheres[i]);
 		}
-		chrono = 0;
+
+		//std::cout << chrono << std::endl;
+
+		if (chrono >= 15)
+		{
+			for (int i = 0; i < Spheres.size(); i++)
+			{
+				for (std::vector<RigidSphere*>::iterator it = Spheres.begin(); it != Spheres.end(); ++it)
+				{
+					delete (*it);
+				}
+				Spheres.clear();
+				PhysicsInit();
+			}
+			chrono = 0;
+		}
 	}
 
 }
