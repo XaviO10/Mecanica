@@ -95,48 +95,39 @@ void renderPrims() {
 	Axis::drawAxis();
 
 	if (renderMesh)
+		for (int i = 0; i < 18; i++)
+		{
+			data = &FLSys[i].waves.position[0].x;
+			Mesh::updateMesh(data);
+			
+		}
 		Mesh::drawMesh();
-	for (int i = 0; i < 2; i++)
-	{
-		data = &FLSys[i].waves.position[0].x;
-		Mesh::updateMesh(data);
-		Fiber::drawFiber();
-	}
-
-
-	if (renderFiber)
-		Fiber::drawFiber();
 }
 
 
 
 void PhysicsInit() {
-	// Do your initialization code here...
-	for (int i = 0; i < 99; i++)
+	for (int i = 0; i < 18; i++)
 	{
-		FluidSystem tempFiber;
+		FluidSystem tempFluid;
 
-		glm::vec3 pos = { RandomFloat(-4,4),3, RandomFloat(-4,4) };
-		tempFiber.waves.position.push_back(pos);
+		glm::vec3 pos = { 0,4,0 };
+		tempFluid.waves.position.push_back(pos);
 
 
-		for (int j = 1; j < 5; j++)
+		for (int j = 0; j < 14; j++)
 		{
-			tempFiber.waves.position.push_back({ tempFiber.waves.position[0].x, tempFiber.waves.position[0].y,tempFiber.waves.position[0].z });
+			tempFluid.waves.position.push_back({ tempFluid.waves.position[0].x, tempFluid.waves.position[0].y,tempFluid.waves.position[0].z });
 
 
 		}
-		FLSys.push_back(tempFiber);
+		FLSys.push_back(tempFluid);
 	}
 	data = &FLSys[0].waves.position[0].x;
-	Fiber::updateFiber(data);
-	// ...................................
+	Mesh::updateMesh(data);
+	
 }
 
-
-
-
-// ...................................
 
 
 void PhysicsUpdate(float dt) {
@@ -146,8 +137,7 @@ void PhysicsUpdate(float dt) {
 }
 
 void PhysicsCleanup() {
-	// Do your cleanup code here...
-	// ............................
+	
 }
 void GUI() {
 	ImGuiWindowFlags window_flags = 0;
@@ -156,7 +146,6 @@ void GUI() {
 	bool pause = true;
 	ImGui::Begin("Physics Parameters", &show, 0);
 
-	// Do your GUI code here....
 	{
 
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);//FrameRate
@@ -171,12 +160,12 @@ void GUI() {
 		ImGui::DragFloat("SphereMass_0", &Sphere::mass);
 
 		if (ImGui::TreeNode("Waves")) {
-			/*ImGui::DragFloat("Amplitude_0", static_cast<float*>(&fluid.waves));
-			ImGui::DragFloat("Frequency_0", static_cast<float*>(&fluid.w));
-		//	ImGui::DragFloat("WaveMod_0", &Spheres[1]->mass);
+			ImGui::DragFloat("Amplitude_0", &FLSys[0].waves.A);
+			ImGui::DragFloat("Frequency_0", &FLSys[0].waves.omega);
+			//ImGui::DragFloat("WaveMod_0", &Spheres[1]->mass);
 			//ImGui::DragFloat3("WaveVec_0", &Spheres[1]->radius, 0);
-			ImGui::DragFloat("Amplitude_1", static_cast<float*>(&fluid.A));
-			ImGui::DragFloat("Frequency_1", static_cast<float*>(&fluid.w));*/
+			ImGui::DragFloat("Amplitude_1", &FLSys[1].waves.A);
+			ImGui::DragFloat("Frequency_1", &FLSys[1].waves.omega);
 			//ImGui::DragFloat("WaveMod_1", static_cast<float*>(&fluid.waveVector);
 			//ImGui::DragFloat3("WaveVec_1", fluid.waveVector);
 
