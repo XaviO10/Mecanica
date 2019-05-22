@@ -4,7 +4,7 @@
 #include <vector>
 #include <iostream>
 
-bool play = false;
+bool play = true;
 
 namespace Box {
 	void drawCube();
