@@ -1,18 +1,10 @@
-
 #include <imgui\imgui.h>
 #include <imgui\imgui_impl_sdl_gl3.h>
 #include <glm\gtc\matrix_transform.hpp>
-#include <iostream>
 #include <vector>
-bool play;
-glm::vec3 gravity = { 0,1,0 };
-namespace Sphere {
-	extern void updateSphere(glm::vec3 pos, float radius = 1.f);
-	extern void drawSphere();
-	glm::vec3 Sphereposition(1.f, 8.f, 1.f);
-	float mass = 50.f;
-	float rad = 1.f;
-}
+#include <iostream>
+
+bool play = false;
 
 namespace Box {
 	void drawCube();
@@ -20,8 +12,21 @@ namespace Box {
 namespace Axis {
 	void drawAxis();
 }
+
+namespace Sphere {
+	extern void updateSphere(glm::vec3 pos, float radius = 1.f);
+	extern void drawSphere();
+}
+namespace Capsule {
+	extern void updateCapsule(glm::vec3 posA, glm::vec3 posB, float radius = 1.f);
+	extern void drawCapsule();
+}
+namespace Particles {
+	extern const int maxParticles;
+	extern void updateParticles(int startIdx, int count, float* array_data);
+	extern void drawParticles(int startIdx, int count);
+}
 namespace Mesh {
-	//18 filas
 	extern const int numCols;
 	extern const int numRows;
 	extern void updateMesh(float* array_data);
@@ -32,158 +37,204 @@ namespace Fiber {
 	extern void updateFiber(float* array_data);
 	extern void drawFiber();
 }
-
-float RandomFloat(float a, float b) {
-	float random = ((float)rand()) / (float)RAND_MAX;
-	float diff = b - a;
-	float r = random * diff;
-	return a + r;
+namespace Cube {
+	extern void updateCube(const glm::mat4& transform);
+	extern void drawCube();
 }
 
-struct wave
-{
-	std::vector<glm::vec3> position;
-	float posY;
-	float A;
-	float omega;
-	glm::vec3 k;
-	wave()
-	{
-		A = RandomFloat(0.1, 0.9);
-		omega = RandomFloat(0.1, 0.9);
-		k = { RandomFloat(-2,2), RandomFloat(-2,2), RandomFloat(-2,2) };
-	}
-};
-
-struct FluidSystem
-{
-	const int NumOfWaves = 4;
-	wave waves;
-
-	/*void fill()
-	{
-		for (int i = 0; i < NumOfWaves; i++)
-		{
-			wave* temp = new wave;
-			waves.push_back(*temp);
-		}
-	}*/
-
-
-};
-float *data;
-std::vector<FluidSystem> FLSys;
-
-/*glm::vec3 getInitPos(int i, int j, float initY = 3.f)
-{
-
-}
-glm::vec3 getGerstnerPos(FluidSystem* FLSys, int i, int j, float accum_time = 0.f) {
-	i= i - (FLSys->initPos / FLSys->k)*FLSys->A*sin(FLSys->k* FLSys->initPos.x - FLSys->w * accum_time + FLSys->fase);
-	j = FLSys->A * cos(FLSys->k*FLSys->initPos.x - FLSys->w * accum_time + FLSys->fase);
-	return FLSys; //devuelvela nueva posicion
-}*/
 
 // Boolean variables allow to show/hide the primitives
-bool renderSphere = false;
+bool renderSphere = true;
+bool renderCapsule = false;
+bool renderParticles = false;
 bool renderMesh = true;
 bool renderFiber = false;
+bool renderCube = false;
 
 //You may have to change this code
 void renderPrims() {
+
 	Box::drawCube();
 	Axis::drawAxis();
 
+	if (renderSphere)
+		Sphere::drawSphere();
+
+	if (renderCapsule)
+		Capsule::drawCapsule();
+
+	if (renderParticles) {
+		int startDrawingFromParticle = 0;
+		int numParticlesToDraw = Particles::maxParticles;
+		Particles::drawParticles(startDrawingFromParticle, numParticlesToDraw);
+	}
+
 	if (renderMesh)
 		Mesh::drawMesh();
-	for (int i = 0; i < 2; i++)
-	{
-		data = &FLSys[i].waves.position[0].x;
-		Mesh::updateMesh(data);
-		Fiber::drawFiber();
-	}
-
-
 	if (renderFiber)
 		Fiber::drawFiber();
+
+	if (renderCube)
+		Cube::drawCube();
 }
 
+struct FluidSystem
+{
+	std::vector<glm::vec3> fluidPoints;
+	//glm::vec3 fluidPoints[14][18];
+	std::vector<glm::vec3> firstPos;
+	glm::vec3 y = glm::vec3(0.0f, 1.0f, 0.0f);
 
+	glm::vec3 waveVec = glm::vec3(1.0f, 0.0f, 1.0f);
+
+	float time, t, w, A, waveMod, density, gravity, vSub;
+	float meshSize = 0.60;  //Cambiar tamany mesh
+
+	float* fillPositions()
+	{
+		float* posArray = new float[fluidPoints.size() * 3];
+		for (int i = 0; i < fluidPoints.size(); i++)
+		{
+			posArray[i * 3 + 0] = fluidPoints[i].x;
+			posArray[i * 3 + 1] = fluidPoints[i].y;
+			posArray[i * 3 + 2] = fluidPoints[i].z;
+		}
+		return posArray;
+	}
+
+};
+
+struct BuoyantSphere {
+	float radius = 1.f;
+	glm::vec3 sphPos = { 0,5,0 };
+};
+
+FluidSystem *fluidSys = new FluidSystem();
+BuoyantSphere *sphere = new BuoyantSphere();
+
+void updateSphere(FluidSystem* FLSys, BuoyantSphere* BSph,
+	float accum_time, float dt) {
+
+
+}
+
+/*glm::vec3 getInitPos(int i, int j, float initY = 3.f)
+{
+return;
+}*/
+
+glm::vec3 getGerstnerPos(FluidSystem* FLSys, int i, int j, float accum_time = 0.f)
+{
+	FLSys->t += accum_time;
+	float yPoints = 0.0f;
+	int countPoints = 0;
+
+	glm::vec3 newPos;
+
+	glm::vec3 v = (FLSys->waveVec / FLSys->waveMod)*FLSys->A*sin(dot(FLSys->waveVec, glm::vec3(FLSys->firstPos[i * 18 + j])) - FLSys->w * FLSys->t);
+	newPos.x = FLSys->firstPos[i * 18 + j].x - v.x;
+	newPos.z = FLSys->firstPos[i * 18 + j].z - v.z;
+	newPos.y = ((glm::vec3(FLSys->A*cos(dot(FLSys->waveVec, glm::vec3(FLSys->firstPos[i * 18 + j])) - FLSys->w * FLSys->t))).y) + 3;
+
+
+	return newPos;
+}
 
 void PhysicsInit() {
-	// Do your initialization code here...
-	for (int i = 0; i < 99; i++)
+	fluidSys->t = 0.0f;
+	if (fluidSys->w < 1.0f)fluidSys->w = 3.0f;
+	fluidSys->A = 0.2f;//amplitud
+	fluidSys->waveMod = fluidSys->waveVec.length();//
+	fluidSys->gravity = -9.8f;//gravedad
+	fluidSys->density = 15.0f;//densidad
+
+	//Volum Desplasat
+	fluidSys->vSub = 0.0f;
+
+
+	float x;
+	float z = -5.5f;
+	float y = 3.0f;
+
+	for (int i = 0; i < Mesh::numRows; i++)
 	{
-		FluidSystem tempFiber;
-
-		glm::vec3 pos = { RandomFloat(-4,4),3, RandomFloat(-4,4) };
-		tempFiber.waves.position.push_back(pos);
-
-
-		for (int j = 1; j < 5; j++)
+		z += fluidSys->meshSize;
+		x = -5.5f;
+		for (int j = 0; j < Mesh::numCols; ++j)
 		{
-			tempFiber.waves.position.push_back({ tempFiber.waves.position[0].x, tempFiber.waves.position[0].y,tempFiber.waves.position[0].z });
-
-
+			x += fluidSys->meshSize;
+			glm::vec3 pos(x, y, z);
+			fluidSys->fluidPoints.push_back(pos);
+			fluidSys->firstPos.push_back(pos);
 		}
-		FLSys.push_back(tempFiber);
 	}
-	data = &FLSys[0].waves.position[0].x;
-	Fiber::updateFiber(data);
-	// ...................................
+	Mesh::updateMesh(fluidSys->fillPositions());
+
+	Sphere::updateSphere(sphere->sphPos, sphere->radius);
 }
-
-
-
-
-// ...................................
-
-
 void PhysicsUpdate(float dt) {
-	if (play) {
+	//TODO
+	if (play)
+	{
+		fluidSys->time += dt;
+		if (fluidSys->time >= 4)
+		{
+			PhysicsInit();
+			fluidSys->time = 0;
+		}
+		else
+		{
+			//particles.Update(dt);
+			Mesh::updateMesh(fluidSys->fillPositions());
 
+			for (int i = 0; i < Mesh::numCols; ++i)
+			{
+				for (int j = 0; j < Mesh::numRows; ++j)
+				{
+					fluidSys->fluidPoints[i * 18 + j] = getGerstnerPos(fluidSys, i, j, dt);
+				}
+			}
+		}
 	}
+
 }
 
 void PhysicsCleanup() {
-	// Do your cleanup code here...
-	// ............................
+	//Mesh
+	fluidSys->fluidPoints.clear();
+	fluidSys->firstPos.clear();
 }
-void GUI() {
-	ImGuiWindowFlags window_flags = 0;
-	bool show = true;
 
-	bool pause = true;
+
+void GUI() {
+	bool show = true;
 	ImGui::Begin("Physics Parameters", &show, 0);
 
 	// Do your GUI code here....
 	{
-
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);//FrameRate
-		ImGui::Checkbox("Play/pause", &play);
-
-		if (ImGui::Button("ResetSimulation", ImVec2(650, 20))) {
+		ImGui::Checkbox("Play simulation", &play);
+		if (ImGui::Button("Reset", ImVec2(50, 20)))
+		{
 			PhysicsCleanup();
 			PhysicsInit();
 		}
+		if (ImGui::TreeNode("Waves"))
+		{
+			ImGui::DragFloat("Amplitude_0", &fluidSys->A, 0.1f, 0.0f, 0.5f, "%.1f");
+			ImGui::DragFloat("Frequency_0", &fluidSys->w, 0.1f, 1.0f, 10.0f, "%.1f");
+			ImGui::DragFloat("WaveMod_0", &fluidSys->waveMod, 0.1f, 1.0f, 10.0f, "%.1f");
+			ImGui::DragFloat3("WaveVec_0", &(fluidSys->waveVec.x, fluidSys->waveVec.y, fluidSys->waveVec.z), 0.1f, 1.0f, 10.0f, "%.1f");
 
-
-		ImGui::DragFloat("SphereMass_0", &Sphere::mass);
-
-		if (ImGui::TreeNode("Waves")) {
-			/*ImGui::DragFloat("Amplitude_0", static_cast<float*>(&fluid.waves));
-			ImGui::DragFloat("Frequency_0", static_cast<float*>(&fluid.w));
-		//	ImGui::DragFloat("WaveMod_0", &Spheres[1]->mass);
-			//ImGui::DragFloat3("WaveVec_0", &Spheres[1]->radius, 0);
-			ImGui::DragFloat("Amplitude_1", static_cast<float*>(&fluid.A));
-			ImGui::DragFloat("Frequency_1", static_cast<float*>(&fluid.w));*/
-			//ImGui::DragFloat("WaveMod_1", static_cast<float*>(&fluid.waveVector);
-			//ImGui::DragFloat3("WaveVec_1", fluid.waveVector);
+			/*ImGui::DragFloat("Amplitude_1", &fluidSys->A, 0.1f, 1.0f, 10.0f, "%.1f");
+			ImGui::DragFloat("Frequency_1", &fluidSys->w, 0.1f, 1.0f, 10.0f, "%.1f");
+			ImGui::DragFloat("WaveMod_1", &fluidSys->kItalic, 0.1f, 1.0f, 10.0f, "%.1f");
+			ImGui::DragFloat3("WaveVec_1", &(fluidSys->kBlood.x, fluidSys->kBlood.y, fluidSys->kBlood.z), 0.1f, 1.0f, 10.0f, "%.1f");*/
 
 			ImGui::TreePop();
 		}
-
 	}
+	// .........................
 
 	ImGui::End();
 
