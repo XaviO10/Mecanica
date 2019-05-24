@@ -81,13 +81,15 @@ void renderPrims() {
 struct FluidSystem
 {
 	std::vector<glm::vec3> fluidPoints;
+	float density=10;
 	//glm::vec3 fluidPoints[14][18];
 	std::vector<glm::vec3> firstPos;
 	glm::vec3 y = glm::vec3(0.0f, 1.0f, 0.0f);
+	glm::vec3 gravity;
 
 	glm::vec3 waveVec = glm::vec3(1.0f, 0.0f, 1.0f);
 
-	float time, t, w, A, waveMod, density, gravity, vSub;
+	float time, t, w, A, waveMod, vSub;
 	float meshSize = 0.60;  //Cambiar tamany mesh
 
 	float* fillPositions()
@@ -106,17 +108,32 @@ struct FluidSystem
 
 struct BuoyantSphere {
 	float radius = 1.f;
-	glm::vec3 sphPos = { 0,5,0 };
+	glm::vec3 sphPos = { 0,10,0 };
+	glm::vec3 velocity = { 0,0,0 };
+	float density;
+	glm::vec3 bForce;
+	float sMass=0.1;
 };
 
 FluidSystem *fluidSys = new FluidSystem();
 BuoyantSphere *sphere = new BuoyantSphere();
 
-void updateSphere(FluidSystem* FLSys, BuoyantSphere* BSph,
-	float accum_time, float dt) {
+void updateSphere(FluidSystem* FLSys, BuoyantSphere* BSph,float accum_time, float dt) 
+{
+	glm::vec3 y = { 0, 1, 0 };
+	glm::vec3 gForce = BSph->sMass*FLSys->gravity;
+														//Esta variable tiene que ser la altura de la mesh
+	BSph->bForce = (FLSys->density)*(FLSys->gravity)*y*FLSys->firstPos[0].y;
+	
+	gForce += BSph->bForce/ BSph->sMass;
 
+	std::cout << "-------" << gForce.y << std::endl;
 
+	BSph->sphPos = BSph->sphPos + BSph->velocity * dt + (float)0.5*FLSys->gravity*(float)pow((dt*10), 2);
+	
 }
+
+
 
 /*glm::vec3 getInitPos(int i, int j, float initY = 3.f)
 {
@@ -145,7 +162,7 @@ void PhysicsInit() {
 	if (fluidSys->w < 1.0f)fluidSys->w = 3.0f;
 	fluidSys->A = 0.2f;//amplitud
 	fluidSys->waveMod = fluidSys->waveVec.length();//
-	fluidSys->gravity = -9.8f;//gravedad
+	fluidSys->gravity = { 0,-9.8f,0 };//gravedad
 	fluidSys->density = 15.0f;//densidad
 
 	//Volum Desplasat
@@ -169,7 +186,6 @@ void PhysicsInit() {
 		}
 	}
 	Mesh::updateMesh(fluidSys->fillPositions());
-
 	Sphere::updateSphere(sphere->sphPos, sphere->radius);
 }
 void PhysicsUpdate(float dt) {
@@ -194,6 +210,10 @@ void PhysicsUpdate(float dt) {
 					fluidSys->fluidPoints[i * 18 + j] = getGerstnerPos(fluidSys, i, j, dt);
 				}
 			}
+			
+			updateSphere(fluidSys, sphere, fluidSys->time, dt);			
+			Sphere::updateSphere(sphere->sphPos);
+			
 		}
 	}
 
